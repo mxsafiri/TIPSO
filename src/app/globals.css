@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* TIPSO brand */
+  --color-gold-300: #ecc55c;
+  --color-gold-400: #e0b23a;
+  --color-gold-500: #d4a017;
+  --color-gold-600: #b8890f;
+
+  --color-navy-950: #070b14;
+  --color-navy-900: #0a0e1a;
+  --color-navy-850: #0e1424;
+  --color-navy-800: #131b2e;
+  --color-navy-700: #1b2440;
+  --color-navy-600: #28335a;
+
+  --color-win: #22c55e;
+  --color-loss: #ef4444;
+
+  --font-sans: var(--font-app), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+:root {
+  --bg: #f6f7fb;
+  --bg-card: #ffffff;
+  --bg-elevated: #ffffff;
+  --bg-inset: #eef0f6;
+  --text-primary: #0a0e1a;
+  --text-secondary: #5b6478;
+  --border: #e3e6ee;
+  --gold: #b8890f;
+}
+
+.dark {
+  --bg: #0a0e1a;
+  --bg-card: #131b2e;
+  --bg-elevated: #1b2440;
+  --bg-inset: #0e1424;
+  --text-primary: #f4f6fb;
+  --text-secondary: #8e97ad;
+  --border: #1f2942;
+  --gold: #e0b23a;
+}
+
+@layer utilities {
+  .bg-app { background-color: var(--bg); }
+  .bg-card { background-color: var(--bg-card); }
+  .bg-elevated { background-color: var(--bg-elevated); }
+  .bg-inset { background-color: var(--bg-inset); }
+  .text-primary { color: var(--text-primary); }
+  .text-secondary { color: var(--text-secondary); }
+  .text-gold { color: var(--gold); }
+  .border-app { border-color: var(--border); }
+}
+
+html {
+  background-color: var(--bg);
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Hide scrollbars on horizontal chip rows while keeping them scrollable */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.live-dot {
+  animation: pulse-dot 1.4s ease-in-out infinite;
+}

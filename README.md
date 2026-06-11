@@ -1,0 +1,2 @@
+# TIPSO
+Betting Intel 

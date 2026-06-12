@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/auth";
-import { findUserById, subscribe, toPublicUser } from "@/lib/db";
+import { activateSubscription, settleTransaction, store, toPublicUser } from "@/lib/db";
+import { getPaymentProvider, makeReference } from "@/lib/payments";
 import { getPlan } from "@/lib/plans";
 
 const PROVIDERS = ["mpesa", "tigopesa", "airtelmoney", "halopesa", "wallet"] as const;
 
 /**
- * MVP payment flow: the mobile-money STK push is simulated and the
- * subscription is activated immediately. The route signature is designed so a
- * real PSP integration (e.g. M-Pesa OpenAPI / Selcom) can replace the body
- * without changing the client.
+ * Subscription checkout. Wallet payments settle against the internal ledger
+ * immediately. Mobile-money payments are collected into the TIPSO treasury via
+ * the configured provider (nTZS WaaS when credentials are set, otherwise the
+ * instant simulator): a synchronous "completed" activates the plan now, a
+ * "pending" collection is activated by the settlement webhook.
  */
 export async function POST(req: Request) {
   const userId = await getSessionUserId();
@@ -22,7 +24,8 @@ export async function POST(req: Request) {
   const provider = PROVIDERS.includes(body?.provider) ? (body.provider as (typeof PROVIDERS)[number]) : null;
   const phone = typeof body?.phone === "string" ? body.phone.trim() : "";
 
-  if (!getPlan(planId)) {
+  const plan = getPlan(planId);
+  if (!plan) {
     return NextResponse.json({ error: "Unknown plan" }, { status: 400 });
   }
   if (!provider) {
@@ -33,12 +36,43 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { subscription, transaction } = subscribe(userId, planId, provider, phone);
-    const user = findUserById(userId);
+    const reference = makeReference();
+    let subscription = null;
+    let transaction;
+    let paid = true;
+
+    if (provider === "wallet") {
+      ({ subscription, transaction } = await activateSubscription(userId, plan.id, provider, phone, true, reference));
+    } else {
+      // Record the pending transaction first so a fast settlement webhook
+      // always finds it, then start the treasury collection.
+      ({ transaction } = await activateSubscription(userId, plan.id, provider, phone, false, reference));
+      let collection;
+      try {
+        collection = await getPaymentProvider().collect({
+          amountTzs: plan.priceTzs,
+          phone,
+          description: `TIPSO ${plan.name}`,
+          reference,
+        });
+      } catch (err) {
+        await store.setTransactionStatus(transaction.id, "failed");
+        throw err;
+      }
+      paid = collection.status === "completed";
+      if (paid) {
+        const settled = await settleTransaction(reference);
+        transaction = settled ?? transaction;
+        subscription = (await store.getActiveSubscription(userId)) ?? null;
+      }
+    }
+
+    const user = await store.findUserById(userId);
     return NextResponse.json({
       subscription,
       transaction,
-      user: user ? toPublicUser(user) : null,
+      pending: !paid,
+      user: user ? await toPublicUser(user) : null,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Payment failed";

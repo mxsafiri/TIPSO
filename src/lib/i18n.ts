@@ -108,6 +108,15 @@ const dict = {
     en: "Share your code. You both get TZS 5,000 wallet credit.",
     sw: "Shiriki kodi yako. Nyote mnapata TZS 5,000 kwenye pochi.",
   },
+  "account.topUp": { en: "Top Up", sw: "Weka Pesa" },
+  "account.withdraw": { en: "Withdraw", sw: "Toa Pesa" },
+  "account.amount": { en: "Amount (TZS)", sw: "Kiasi (TZS)" },
+  "account.topUpSuccess": { en: "Wallet topped up!", sw: "Pochi imejazwa!" },
+  "account.pendingPayment": { en: "Awaiting payment confirmation…", sw: "Inasubiri uthibitisho wa malipo…" },
+  "account.requestSent": {
+    en: "Withdrawal request received — we'll process it shortly.",
+    sw: "Ombi la kutoa pesa limepokelewa — tutalishughulikia hivi karibuni.",
+  },
   "account.signIn": { en: "Sign In", sw: "Ingia" },
   "account.signInDesc": { en: "Sign in to manage your plan and wallet.", sw: "Ingia kudhibiti kifurushi na pochi yako." },
 

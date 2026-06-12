@@ -35,7 +35,7 @@ export default function PlansPage() {
   async function pay() {
     setError("");
     setStep("processing");
-    // Simulated STK-push delay so the flow mirrors real mobile money UX.
+    // Brief delay so the flow mirrors real mobile-money STK-push UX.
     await new Promise((resolve) => setTimeout(resolve, 2200));
     try {
       const res = await fetch("/api/subscribe", {
@@ -48,6 +48,14 @@ export default function PlansPage() {
         setError(data.error ?? "Payment failed");
         setStep("pay");
         return;
+      }
+      if (data.pending) {
+        // Collection settles via webhook — poll until the plan activates.
+        for (let i = 0; i < 20; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+          const me = await fetch("/api/auth/me", { cache: "no-store" }).then((r) => r.json());
+          if (me.user?.subscription) break;
+        }
       }
       await refreshUser();
       setStep("success");

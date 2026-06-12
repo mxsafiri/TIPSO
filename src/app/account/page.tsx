@@ -21,11 +21,105 @@ import {
 import { formatTzs, fullDate } from "@/lib/format";
 import type { PlatformStats, Transaction } from "@/lib/types";
 
+function WalletPanel() {
+  const { t, user, refreshUser } = useApp();
+  const [mode, setMode] = useState<"topup" | "withdraw">("topup");
+  const [amount, setAmount] = useState("");
+  const [phone, setPhone] = useState(user?.phone ?? "");
+  const [message, setMessage] = useState<{ text: string; tone: "ok" | "err" } | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setMessage(null);
+    try {
+      const res = await fetch(mode === "topup" ? "/api/wallet/deposit" : "/api/wallet/withdraw", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amountTzs: Number(amount), phone }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMessage({ text: data.error ?? "Failed", tone: "err" });
+        return;
+      }
+      await refreshUser();
+      setAmount("");
+      setMessage({
+        text:
+          mode === "withdraw"
+            ? t("account.requestSent")
+            : data.pending
+              ? t("account.pendingPayment")
+              : t("account.topUpSuccess"),
+        tone: "ok",
+      });
+    } catch {
+      setMessage({ text: "Network error — try again", tone: "err" });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-3 bg-inset px-4 py-4">
+      <div className="flex overflow-hidden rounded-lg border border-app text-xs font-bold">
+        <button
+          type="button"
+          onClick={() => setMode("topup")}
+          className={`flex-1 py-2 ${mode === "topup" ? "bg-gold-400 text-navy-900" : "text-secondary"}`}
+        >
+          {t("account.topUp")}
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("withdraw")}
+          className={`flex-1 py-2 ${mode === "withdraw" ? "bg-gold-400 text-navy-900" : "text-secondary"}`}
+        >
+          {t("account.withdraw")}
+        </button>
+      </div>
+      <input
+        type="number"
+        inputMode="numeric"
+        required
+        min={mode === "topup" ? 1000 : 2000}
+        value={amount}
+        onChange={(e) => setAmount(e.target.value)}
+        placeholder={t("account.amount")}
+        className="w-full rounded-xl border border-app bg-card px-3.5 py-2.5 text-sm outline-none focus:border-gold-400"
+      />
+      <input
+        type="tel"
+        required
+        value={phone}
+        onChange={(e) => setPhone(e.target.value)}
+        placeholder="+255 7XX XXX XXX"
+        className="w-full rounded-xl border border-app bg-card px-3.5 py-2.5 text-sm outline-none focus:border-gold-400"
+      />
+      {message && (
+        <p className={`text-xs font-semibold ${message.tone === "ok" ? "text-win" : "text-loss"}`}>
+          {message.text}
+        </p>
+      )}
+      <button
+        type="submit"
+        disabled={busy}
+        className="w-full rounded-xl bg-gold-400 py-2.5 text-xs font-extrabold text-navy-900 disabled:opacity-50"
+      >
+        {mode === "topup" ? t("account.topUp") : t("account.withdraw")}
+      </button>
+    </form>
+  );
+}
+
 export default function AccountPage() {
   const { t, lang, setLang, theme, setTheme, user, userLoaded, refreshUser } = useApp();
   const router = useRouter();
   const [stats, setStats] = useState<PlatformStats | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [showWallet, setShowWallet] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
   useEffect(() => {
@@ -137,12 +231,19 @@ export default function AccountPage() {
             )}
 
             <div className="mt-4 divide-y divide-[var(--border)] overflow-hidden rounded-2xl border border-app bg-card">
-              <div className="flex items-center gap-3 px-4 py-3.5">
+              <button
+                type="button"
+                onClick={() => setShowWallet((v) => !v)}
+                className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
+              >
                 <WalletIcon className="h-5 w-5 text-gold" />
                 <span className="flex-1 text-sm font-semibold">{t("account.wallet")}</span>
                 <span className="text-sm font-bold tabular-nums">{formatTzs(user.walletTzs)}</span>
-                <ChevronRightIcon className="h-4 w-4 text-secondary" />
-              </div>
+                <ChevronRightIcon
+                  className={`h-4 w-4 text-secondary transition-transform ${showWallet ? "rotate-90" : ""}`}
+                />
+              </button>
+              {showWallet && <WalletPanel />}
               <button
                 type="button"
                 onClick={() => setShowHistory((v) => !v)}

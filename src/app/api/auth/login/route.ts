@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { findUserByEmail, toPublicUser, verifyPassword } from "@/lib/db";
+import { store, toPublicUser, verifyPassword } from "@/lib/db";
 import { createSession } from "@/lib/auth";
 
 export async function POST(req: Request) {
@@ -11,11 +11,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Email and password are required" }, { status: 400 });
   }
 
-  const user = findUserByEmail(email);
+  const user = await store.findUserByEmail(email);
   if (!user || !verifyPassword(user, password)) {
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
   }
 
   await createSession(user.id);
-  return NextResponse.json({ user: toPublicUser(user) });
+  return NextResponse.json({ user: await toPublicUser(user) });
 }

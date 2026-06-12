@@ -1,0 +1,45 @@
+import type { Subscription, Tip, Transaction, User, WithdrawalRequest } from "../types";
+
+export interface NewTransaction {
+  userId: string;
+  type: Transaction["type"];
+  description: string;
+  amountTzs: number;
+  provider: Transaction["provider"];
+  phone?: string;
+  status: Transaction["status"];
+  reference: string;
+  planId?: Transaction["planId"];
+}
+
+/**
+ * Storage backend contract. Implemented by the Postgres (Neon) backend in
+ * production and the in-memory backend for local dev without a DATABASE_URL.
+ */
+export interface DataStore {
+  // Users
+  findUserByEmail(email: string): Promise<User | undefined>;
+  findUserById(id: string): Promise<User | undefined>;
+  createUser(input: { name: string; email: string; phone: string; password: string }): Promise<User>;
+  adjustWallet(userId: string, deltaTzs: number): Promise<void>;
+
+  // Subscriptions
+  getActiveSubscription(userId: string): Promise<Subscription | undefined>;
+  deactivateSubscriptions(userId: string): Promise<void>;
+  createSubscription(sub: Subscription): Promise<void>;
+
+  // Transactions
+  createTransaction(tx: NewTransaction): Promise<Transaction>;
+  getTransactions(userId: string): Promise<Transaction[]>;
+  findTransactionByReference(reference: string): Promise<Transaction | undefined>;
+  setTransactionStatus(id: string, status: Transaction["status"]): Promise<void>;
+
+  // Withdrawals
+  createWithdrawalRequest(req: Omit<WithdrawalRequest, "id" | "status" | "createdAt">): Promise<WithdrawalRequest>;
+
+  // Tips
+  getAllTips(): Promise<Tip[]>;
+
+  // Webhook audit trail
+  recordPaymentEvent(provider: string, eventType: string, payload: unknown): Promise<void>;
+}

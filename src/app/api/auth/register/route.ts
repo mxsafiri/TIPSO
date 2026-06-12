@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createUser, findUserByEmail, toPublicUser } from "@/lib/db";
+import { store, toPublicUser } from "@/lib/db";
 import { createSession } from "@/lib/auth";
 
 export async function POST(req: Request) {
@@ -18,11 +18,11 @@ export async function POST(req: Request) {
   if (password.length < 8) {
     return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
   }
-  if (findUserByEmail(email)) {
+  if (await store.findUserByEmail(email)) {
     return NextResponse.json({ error: "An account with this email already exists" }, { status: 409 });
   }
 
-  const user = createUser({ name, email, phone, password });
+  const user = await store.createUser({ name, email, phone, password });
   await createSession(user.id);
-  return NextResponse.json({ user: toPublicUser(user) }, { status: 201 });
+  return NextResponse.json({ user: await toPublicUser(user) }, { status: 201 });
 }

@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { getAllTips } from "@/lib/db";
+import { store } from "@/lib/db";
 import type { PlatformStats } from "@/lib/types";
 
 export async function GET() {
-  const all = getAllTips();
+  const all = await store.getAllTips();
   const settled = all.filter((t) => t.status === "won" || t.status === "lost");
   const won = settled.filter((t) => t.status === "won");
 

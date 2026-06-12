@@ -1,6 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
-import { findUserById, toPublicUser } from "./db";
+import { store, toPublicUser } from "./db";
 import type { PublicUser } from "./types";
 
 const COOKIE_NAME = "tipso_session";
@@ -44,6 +44,6 @@ export async function getSessionUserId(): Promise<string | null> {
 export async function getCurrentUser(): Promise<PublicUser | null> {
   const userId = await getSessionUserId();
   if (!userId) return null;
-  const user = findUserById(userId);
+  const user = await store.findUserById(userId);
   return user ? toPublicUser(user) : null;
 }

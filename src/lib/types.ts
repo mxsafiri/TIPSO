@@ -62,11 +62,24 @@ export interface Transaction {
   type: "subscription" | "wallet_topup" | "referral_bonus";
   description: string;
   amountTzs: number;
-  provider: PaymentProvider | "wallet";
+  provider: PaymentProvider | "wallet" | "ntzs";
   phone?: string;
   status: "pending" | "completed" | "failed";
   reference: string;
+  /** Plan being purchased, for subscription transactions */
+  planId?: PlanId;
   createdAt: string;
+}
+
+export interface WithdrawalRequest {
+  id: string;
+  userId: string;
+  amountTzs: number;
+  /** Mobile money number the payout should go to */
+  destination: string;
+  status: "pending" | "approved" | "paid" | "rejected";
+  createdAt: string;
+  processedAt?: string;
 }
 
 export interface User {

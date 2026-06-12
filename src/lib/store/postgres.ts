@@ -9,11 +9,20 @@ type Row = Record<string, unknown>;
 /** Lazy client so importing this module never requires DATABASE_URL. */
 let client: ReturnType<typeof neon> | undefined;
 
+/**
+ * Accepts the connection string as copied from the Neon console, including
+ * the `psql 'postgresql://…'` command wrapper people paste by accident.
+ */
+function normalizeDatabaseUrl(raw: string): string {
+  const match = raw.match(/postgres(?:ql)?:\/\/[^'"\s]+/);
+  return match ? match[0] : raw;
+}
+
 function sql(strings: TemplateStringsArray, ...values: unknown[]): Promise<Row[]> {
   if (!client) {
     const url = process.env.DATABASE_URL;
     if (!url) throw new Error("DATABASE_URL is not set");
-    client = neon(url);
+    client = neon(normalizeDatabaseUrl(url));
   }
   return client(strings, ...values) as Promise<Row[]>;
 }

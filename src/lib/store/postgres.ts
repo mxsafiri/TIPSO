@@ -372,6 +372,18 @@ export const postgresStore: DataStore = {
     return rows[0] ? mapTransaction(rows[0]) : undefined;
   },
 
+  async getPendingTransactions(userId) {
+    await ensureReady();
+    const rows = userId
+      ? ((await sql`
+          SELECT * FROM transactions WHERE status = 'pending' AND user_id = ${userId}
+          ORDER BY created_at DESC LIMIT 20`) as Row[])
+      : ((await sql`
+          SELECT * FROM transactions WHERE status = 'pending'
+          ORDER BY created_at DESC LIMIT 100`) as Row[]);
+    return rows.map(mapTransaction);
+  },
+
   async setTransactionStatus(id, status) {
     await ensureReady();
     await sql`UPDATE transactions SET status = ${status} WHERE id = ${id}`;

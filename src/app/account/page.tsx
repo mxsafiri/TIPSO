@@ -260,7 +260,19 @@ export default function AccountPage() {
                   {transactions.map((tx) => (
                     <div key={tx.id} className="flex items-center justify-between border-b border-app py-2.5 text-xs last:border-0">
                       <div>
-                        <div className="font-semibold">{tx.description}</div>
+                        <div className="flex items-center gap-1.5 font-semibold">
+                          {tx.description}
+                          {tx.status === "pending" && (
+                            <span className="rounded bg-gold-400/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-gold">
+                              {t("common.pending")}
+                            </span>
+                          )}
+                          {tx.status === "failed" && (
+                            <span className="rounded bg-loss/10 px-1.5 py-0.5 text-[9px] font-bold uppercase text-loss">
+                              {t("common.failed")}
+                            </span>
+                          )}
+                        </div>
                         <div className="text-secondary">
                           {fullDate(tx.createdAt, lang)} · {tx.reference}
                         </div>

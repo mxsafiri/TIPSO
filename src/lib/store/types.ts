@@ -33,6 +33,7 @@ export interface DataStore {
   getTransactions(userId: string): Promise<Transaction[]>;
   findTransactionByReference(reference: string): Promise<Transaction | undefined>;
   findTransactionByProviderRef(providerRef: string): Promise<Transaction | undefined>;
+  getPendingTransactions(userId?: string): Promise<Transaction[]>;
   setTransactionStatus(id: string, status: Transaction["status"]): Promise<void>;
   setTransactionProviderRef(id: string, providerRef: string): Promise<void>;
 

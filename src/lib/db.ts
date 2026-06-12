@@ -94,6 +94,37 @@ export async function settleTransaction(reference: string): Promise<Transaction 
   return tx ? settleTransactionRecord(tx) : null;
 }
 
+/**
+ * Best-effort reconciliation of a user's pending nTZS payments by polling
+ * deposit status — covers the gap until settlement webhooks are configured.
+ * Safe to call on every login: bounded, throttled per process, never throws.
+ */
+const reconcileLastRun = new Map<string, number>();
+
+export async function reconcilePendingTransactions(userId: string): Promise<void> {
+  const last = reconcileLastRun.get(userId) ?? 0;
+  if (Date.now() - last < 60_000) return;
+  reconcileLastRun.set(userId, Date.now());
+
+  try {
+    const { ntzsDepositStatus, isSettledStatus, isFailedStatus, isNtzsConfigured } = await import(
+      "./payments"
+    );
+    if (!isNtzsConfigured()) return;
+    const pending = (await store.getPendingTransactions(userId)).filter(
+      (t) => t.providerRef && Date.now() - new Date(t.createdAt).getTime() < 72 * 3600_000,
+    );
+    for (const tx of pending.slice(0, 5)) {
+      const status = await ntzsDepositStatus(tx.providerRef!);
+      if (!status) continue;
+      if (isSettledStatus(status)) await settleTransactionRecord(tx);
+      else if (isFailedStatus(status)) await store.setTransactionStatus(tx.id, "failed");
+    }
+  } catch {
+    // Reconciliation must never break auth flows.
+  }
+}
+
 export async function settleTransactionRecord(tx: Transaction): Promise<Transaction> {
   if (tx.status === "completed") return tx;
 

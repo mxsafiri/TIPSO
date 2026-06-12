@@ -120,6 +120,38 @@ export async function ntzsPayout(amountTzs: number, phone: string): Promise<{ id
   return { id: typeof data.id === "string" ? data.id : undefined };
 }
 
+/**
+ * Best-effort deposit status poll, used to reconcile pending payments when
+ * webhooks haven't been configured. Returns null when the status can't be
+ * determined (endpoint missing, network error) — callers must treat null as
+ * "still pending", never as failure.
+ */
+export async function ntzsDepositStatus(providerRef: string): Promise<string | null> {
+  if (!isNtzsConfigured()) return null;
+  try {
+    const res = await fetch(`${ntzsBaseUrl()}/deposits/${encodeURIComponent(providerRef)}`, {
+      headers: { Authorization: `Bearer ${process.env.NTZS_API_KEY}` },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    const status = typeof data.status === "string" ? data.status : null;
+    return status ? status.toLowerCase() : null;
+  } catch {
+    return null;
+  }
+}
+
+export function isSettledStatus(status: string): boolean {
+  return SETTLED_STATUSES.has(status);
+}
+
+const FAILED_STATUSES = new Set(["failed", "cancelled", "rejected", "expired"]);
+
+export function isFailedStatus(status: string): boolean {
+  return FAILED_STATUSES.has(status);
+}
+
 /** Instant-settling simulator used until NTZS_API_KEY is configured. */
 const simulatedProvider: PaymentProviderAdapter = {
   name: "simulated",

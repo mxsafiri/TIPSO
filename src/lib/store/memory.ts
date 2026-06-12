@@ -158,6 +158,12 @@ export const memoryStore: DataStore = {
     return state().transactions.find((t) => t.providerRef === providerRef);
   },
 
+  async getPendingTransactions(userId) {
+    return state()
+      .transactions.filter((t) => t.status === "pending" && (!userId || t.userId === userId))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
+
   async setTransactionStatus(id, status) {
     const tx = state().transactions.find((t) => t.id === id);
     if (tx) tx.status = status;

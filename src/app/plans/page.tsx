@@ -17,7 +17,7 @@ const PROVIDERS: { id: PaymentProvider | "wallet"; label: string; color: string 
   { id: "halopesa", label: "HaloPesa", color: "#F47B20" },
 ];
 
-type Step = "choose" | "pay" | "processing" | "success";
+type Step = "choose" | "pay" | "processing" | "success" | "pendingSettlement";
 
 export default function PlansPage() {
   const { t, lang, user, userLoaded, refreshUser } = useApp();
@@ -50,12 +50,19 @@ export default function PlansPage() {
         return;
       }
       if (data.pending) {
-        // Collection settles via webhook — poll until the plan activates.
+        // Collection settles via webhook/reconciliation — poll for activation.
+        let activated = false;
         for (let i = 0; i < 20; i++) {
           await new Promise((resolve) => setTimeout(resolve, 3000));
           const me = await fetch("/api/auth/me", { cache: "no-store" }).then((r) => r.json());
-          if (me.user?.subscription) break;
+          if (me.user?.subscription) {
+            activated = true;
+            break;
+          }
         }
+        await refreshUser();
+        setStep(activated ? "success" : "pendingSettlement");
+        return;
       }
       await refreshUser();
       setStep("success");
@@ -230,6 +237,22 @@ export default function PlansPage() {
             <span className="h-12 w-12 animate-spin rounded-full border-4 border-gold-400 border-t-transparent" />
             <h2 className="mt-6 text-lg font-bold">{t("plans.processing")}</h2>
             {provider !== "wallet" && <p className="mt-2 text-sm text-secondary">{t("plans.checkPhone")}</p>}
+          </div>
+        )}
+
+        {step === "pendingSettlement" && (
+          <div className="flex flex-col items-center px-4 py-20 text-center">
+            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-gold-400/15 text-3xl">
+              ⏳
+            </span>
+            <h2 className="mt-6 text-xl font-extrabold">{t("plans.pendingTitle")}</h2>
+            <p className="mt-2 text-sm text-secondary">{t("plans.pendingDesc")}</p>
+            <Link
+              href="/"
+              className="mt-8 w-full rounded-xl bg-gold-400 py-3.5 text-sm font-extrabold text-navy-900"
+            >
+              {t("plans.backHome")}
+            </Link>
           </div>
         )}
 

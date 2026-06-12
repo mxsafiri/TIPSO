@@ -166,6 +166,9 @@ async function seedIfEmpty(): Promise<void> {
  * the app always has a live "Mkeka wa Leo". Settled history is never touched.
  */
 async function refreshFixturesIfStale(): Promise<void> {
+  // Live-feed mode: real fixtures come from the World Cup sync — never
+  // (re)create demo fixtures.
+  if (process.env.FOOTBALL_DATA_API_KEY) return;
   const rows = (await sql`
     SELECT count(*)::int AS count FROM tips WHERE status = 'pending' AND kickoff > now()`) as {
     count: number;
@@ -435,6 +438,11 @@ export const postgresStore: DataStore = {
           live_home_score = EXCLUDED.live_home_score,
           live_away_score = EXCLUDED.live_away_score`;
     }
+  },
+
+  async deletePendingSeedTips() {
+    await ensureReady();
+    await sql`DELETE FROM tips WHERE status = 'pending' AND id NOT LIKE 'wc\\_%' ESCAPE '\\'`;
   },
 
   async recordPaymentEvent(provider, eventType, payload) {

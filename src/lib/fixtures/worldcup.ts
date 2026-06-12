@@ -265,7 +265,11 @@ export async function syncWorldCupTips(store: DataStore, force = false): Promise
     const data = (await res.json()) as { matches?: FdMatch[] };
     const tips = (data.matches ?? []).map(toTip).filter((t): t is Tip => t !== null);
     lastDiag.matchesFromApi = data.matches?.length ?? 0;
-    if (tips.length > 0) await store.upsertTips(tips);
+    if (tips.length > 0) {
+      await store.upsertTips(tips);
+      // Real fixtures are flowing — retire the demo/seed fixtures.
+      await store.deletePendingSeedTips();
+    }
     lastDiag.tipsUpserted = tips.length;
   } catch (e) {
     lastDiag.error = e instanceof Error ? e.message : String(e);

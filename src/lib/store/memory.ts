@@ -198,6 +198,11 @@ export const memoryStore: DataStore = {
     }
   },
 
+  async deletePendingSeedTips() {
+    const s = state();
+    s.tips = s.tips.filter((t) => t.status !== "pending" || t.id.startsWith("wc_"));
+  },
+
   async recordPaymentEvent() {
     // Audit trail is a no-op in the in-memory backend.
   },

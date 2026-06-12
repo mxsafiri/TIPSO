@@ -13,10 +13,15 @@ export default function LivePage() {
   const [tips, setTips] = useState<TipDto[]>([]);
 
   useEffect(() => {
-    fetch("/api/tips")
-      .then((r) => r.json())
-      .then((d) => setTips(d.tips ?? []))
-      .catch(() => undefined);
+    const load = () =>
+      fetch("/api/tips", { cache: "no-store" })
+        .then((r) => r.json())
+        .then((d) => setTips(d.tips ?? []))
+        .catch(() => undefined);
+    load();
+    // Keep live scores fresh while the tab is open.
+    const timer = setInterval(load, 60_000);
+    return () => clearInterval(timer);
   }, []);
 
   const liveTips = useMemo(() => tips.filter((tip) => tip.live), [tips]);

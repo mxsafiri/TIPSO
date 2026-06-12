@@ -12,7 +12,21 @@ import type { DataStore } from "../store/types";
  */
 
 const SYNC_INTERVAL_MS = 30 * 60 * 1000;
+/** Faster cadence while matches are in play so live scores stay current. */
+const LIVE_SYNC_INTERVAL_MS = 60 * 1000;
+/** Pre-kickoff cadence so matches flip to live promptly. */
+const PREMATCH_SYNC_INTERVAL_MS = 5 * 60 * 1000;
 let lastSyncAt = 0;
+let lastHadLive = false;
+let nextKickoffAt: number | null = null;
+
+function currentInterval(): number {
+  if (lastHadLive) return LIVE_SYNC_INTERVAL_MS;
+  if (nextKickoffAt !== null && nextKickoffAt - Date.now() < 30 * 60 * 1000) {
+    return PREMATCH_SYNC_INTERVAL_MS;
+  }
+  return SYNC_INTERVAL_MS;
+}
 
 export interface FeedDiagnostics {
   keyPresent: boolean;
@@ -50,6 +64,8 @@ interface FdMatch {
   utcDate: string;
   status: string; // SCHEDULED | TIMED | IN_PLAY | PAUSED | FINISHED | ...
   stage?: string;
+  /** Current match minute, provided by the API for live matches. */
+  minute?: number | string | null;
   homeTeam: FdTeam;
   awayTeam: FdTeam;
   score: {
@@ -177,11 +193,16 @@ function settle(pick: Pick, m: FdMatch): { status: "won" | "lost"; result: strin
   return { status: won ? "won" : "lost", result };
 }
 
-function estimateMinute(utcDate: string, status: string): number {
-  if (status === "PAUSED") return 45;
-  const elapsed = Math.floor((Date.now() - new Date(utcDate).getTime()) / 60000);
-  // Subtract the halftime break once we're past it.
-  const minute = elapsed > 60 ? elapsed - 17 : elapsed;
+function liveMinute(m: FdMatch): number {
+  // Prefer the API's own minute (accounts for stoppage time).
+  const apiMinute = typeof m.minute === "string" ? parseInt(m.minute, 10) : m.minute;
+  if (typeof apiMinute === "number" && Number.isFinite(apiMinute) && apiMinute > 0) {
+    return Math.min(120, apiMinute);
+  }
+  if (m.status === "PAUSED") return 45;
+  const elapsed = Math.floor((Date.now() - new Date(m.utcDate).getTime()) / 60000);
+  // Fallback estimate: subtract the halftime break once past it.
+  const minute = elapsed > 60 ? elapsed - 15 : elapsed;
   return Math.max(1, Math.min(90, minute));
 }
 
@@ -214,9 +235,9 @@ function toTip(m: FdMatch): Tip | null {
     result: settled?.result,
     live: live
       ? {
-          minute: estimateMinute(m.utcDate, m.status),
-          homeScore: m.score.fullTime.home ?? 0,
-          awayScore: m.score.fullTime.away ?? 0,
+          minute: liveMinute(m),
+          homeScore: m.score.fullTime.home ?? m.score.halfTime.home ?? 0,
+          awayScore: m.score.fullTime.away ?? m.score.halfTime.away ?? 0,
         }
       : undefined,
     analysis: `TIPSO model pick for ${m.homeTeam.name} vs ${m.awayTeam.name}, FIFA World Cup 2026.`,
@@ -233,7 +254,7 @@ export async function syncWorldCupTips(store: DataStore, force = false): Promise
   const apiKey = process.env.FOOTBALL_DATA_API_KEY;
   if (!apiKey) return;
   const now = Date.now();
-  if (!force && now - lastSyncAt < SYNC_INTERVAL_MS) return;
+  if (!force && now - lastSyncAt < currentInterval()) return;
   lastSyncAt = now;
   lastDiag = {
     keyPresent: true,
@@ -263,14 +284,24 @@ export async function syncWorldCupTips(store: DataStore, force = false): Promise
       return;
     }
     const data = (await res.json()) as { matches?: FdMatch[] };
-    const tips = (data.matches ?? []).map(toTip).filter((t): t is Tip => t !== null);
-    lastDiag.matchesFromApi = data.matches?.length ?? 0;
+    const matches = data.matches ?? [];
+    const tips = matches.map(toTip).filter((t): t is Tip => t !== null);
+    lastDiag.matchesFromApi = matches.length;
     if (tips.length > 0) {
       await store.upsertTips(tips);
       // Real fixtures are flowing — retire all demo/seed data.
       await store.deleteSeedTips();
     }
     lastDiag.tipsUpserted = tips.length;
+
+    // Adapt the sync cadence: every minute while matches are live, every few
+    // minutes just before kickoff, otherwise half-hourly.
+    lastHadLive = matches.some((m) => m.status === "IN_PLAY" || m.status === "PAUSED");
+    const upcoming = matches
+      .filter((m) => m.status === "SCHEDULED" || m.status === "TIMED")
+      .map((m) => new Date(m.utcDate).getTime())
+      .filter((t) => t > now);
+    nextKickoffAt = upcoming.length > 0 ? Math.min(...upcoming) : null;
   } catch (e) {
     lastDiag.error = e instanceof Error ? e.message : String(e);
     console.error("[worldcup-feed]", lastDiag.error);

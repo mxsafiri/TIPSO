@@ -87,8 +87,12 @@ export default function StatsPage() {
 
         <h2 className="mt-6 text-lg font-bold">{t("stats.recentResults")}</h2>
         <div className="mt-3 space-y-2">
-          {recent.map((tip) => (
-            <div key={tip.id} className="flex items-center gap-3 rounded-2xl border border-app bg-card px-4 py-3">
+          {recent.map((tip, i) => (
+            <div
+              key={tip.id}
+              className="anim-fade-up flex items-center gap-3 rounded-2xl border border-app bg-card px-4 py-3"
+              style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}
+            >
               <TeamBadge code={tip.homeCode} color={tip.homeColor} size={36} />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold">

@@ -8,12 +8,15 @@ import TeamBadge from "./TeamBadge";
 import { matchTimeLabel } from "@/lib/format";
 import type { TipDto } from "@/lib/dto";
 
-export default function TipCard({ tip }: { tip: TipDto }) {
+export default function TipCard({ tip, index = 0 }: { tip: TipDto; index?: number }) {
   const { t, lang } = useApp();
   const prediction = lang === "sw" ? tip.predictionSw : tip.prediction;
 
   return (
-    <div className="rounded-2xl border border-app bg-card p-4">
+    <div
+      className="anim-fade-up press rounded-2xl border border-app bg-card p-4"
+      style={{ animationDelay: `${Math.min(index, 8) * 70}ms` }}
+    >
       <div className="flex items-center justify-between text-xs">
         <span className="font-semibold uppercase tracking-wide text-gold">{tip.league}</span>
         <span className="text-secondary">{matchTimeLabel(tip.kickoff, lang)}</span>

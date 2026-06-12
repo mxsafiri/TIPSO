@@ -387,6 +387,29 @@ export const postgresStore: DataStore = {
     return rows.map(mapTip);
   },
 
+  async upsertTips(tips) {
+    await ensureReady();
+    for (const t of tips) {
+      await sql`
+        INSERT INTO tips (id, sport, league, home, away, home_code, away_code, home_color, away_color,
+                          kickoff, prediction, prediction_sw, odds, confidence, is_premium, is_hot_pick,
+                          status, result, live_minute, live_home_score, live_away_score, analysis, analysis_sw)
+        VALUES (${t.id}, ${t.sport}, ${t.league}, ${t.home}, ${t.away}, ${t.homeCode}, ${t.awayCode},
+                ${t.homeColor}, ${t.awayColor}, ${t.kickoff}, ${t.prediction}, ${t.predictionSw},
+                ${t.odds}, ${t.confidence}, ${t.isPremium}, ${t.isHotPick}, ${t.status},
+                ${t.result ?? null}, ${t.live?.minute ?? null}, ${t.live?.homeScore ?? null},
+                ${t.live?.awayScore ?? null}, ${t.analysis}, ${t.analysisSw})
+        ON CONFLICT (id) DO UPDATE SET
+          kickoff = EXCLUDED.kickoff,
+          status = EXCLUDED.status,
+          result = EXCLUDED.result,
+          is_hot_pick = EXCLUDED.is_hot_pick,
+          live_minute = EXCLUDED.live_minute,
+          live_home_score = EXCLUDED.live_home_score,
+          live_away_score = EXCLUDED.live_away_score`;
+    }
+  },
+
   async recordPaymentEvent(provider, eventType, payload) {
     await ensureReady();
     await sql`

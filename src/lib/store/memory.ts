@@ -174,6 +174,15 @@ export const memoryStore: DataStore = {
     return state().tips;
   },
 
+  async upsertTips(tips) {
+    const all = state().tips;
+    for (const tip of tips) {
+      const idx = all.findIndex((t) => t.id === tip.id);
+      if (idx >= 0) all[idx] = tip;
+      else all.push(tip);
+    }
+  },
+
   async recordPaymentEvent() {
     // Audit trail is a no-op in the in-memory backend.
   },

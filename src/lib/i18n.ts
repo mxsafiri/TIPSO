@@ -134,6 +134,11 @@ const dict = {
   "auth.createTitle": { en: "Join TIPSO", sw: "Jiunge na TIPSO" },
   "auth.createSubtitle": { en: "Verified tips. Transparent results.", sw: "Tips zilizothibitishwa. Matokeo ya wazi." },
   "auth.demoHint": { en: "Demo account", sw: "Akaunti ya majaribio" },
+  "auth.orEmail": { en: "or continue with email", sw: "au endelea kwa barua pepe" },
+
+  // World Cup
+  "wc.banner": { en: "FIFA World Cup 2026 is on!", sw: "Kombe la Dunia 2026 linaendelea!" },
+  "wc.bannerDesc": { en: "Daily verified picks for every match.", sw: "Mkeka wa kila mechi, kila siku." },
 
   // Misc
   "common.tzs": { en: "TZS", sw: "TZS" },

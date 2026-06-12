@@ -39,6 +39,8 @@ export interface DataStore {
 
   // Tips
   getAllTips(): Promise<Tip[]>;
+  /** Insert or update tips by id (used by live fixture feeds). */
+  upsertTips(tips: Tip[]): Promise<void>;
 
   // Webhook audit trail
   recordPaymentEvent(provider: string, eventType: string, payload: unknown): Promise<void>;

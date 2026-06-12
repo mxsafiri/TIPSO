@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { useApp } from "@/components/AppProviders";
+import GoogleSignIn from "@/components/GoogleSignIn";
 import Logo from "@/components/Logo";
 
 function LoginForm() {
@@ -47,7 +48,22 @@ function LoginForm() {
       <h1 className="mt-8 text-2xl font-extrabold">{t("auth.welcomeBack")}</h1>
       <p className="mt-1 text-sm text-secondary">{t("auth.loginSubtitle")}</p>
 
-      <form onSubmit={submit} className="mt-7 space-y-4">
+      <div className="mt-7">
+        <GoogleSignIn
+          onSuccess={async () => {
+            await refreshUser();
+            router.push(params.get("next") ?? "/");
+          }}
+        />
+      </div>
+
+      <div className="mt-5 flex items-center gap-3 text-[11px] uppercase tracking-wide text-secondary">
+        <span className="h-px flex-1 bg-[var(--border)]" />
+        {t("auth.orEmail")}
+        <span className="h-px flex-1 bg-[var(--border)]" />
+      </div>
+
+      <form onSubmit={submit} className="mt-5 space-y-4">
         <div>
           <label htmlFor="email" className="text-xs font-semibold text-secondary">
             {t("auth.email")}

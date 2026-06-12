@@ -106,10 +106,10 @@ export default function TipsPage() {
           {grouped.length === 0 && (
             <p className="py-16 text-center text-sm text-secondary">{t("tips.empty")}</p>
           )}
-          {grouped.map(([league, leagueTips]) => (
+          {grouped.map(([league, leagueTips], groupIdx) => (
             <section key={league} className="space-y-2.5">
-              {leagueTips.map((tip) => (
-                <TipCard key={tip.id} tip={tip} />
+              {leagueTips.map((tip, i) => (
+                <TipCard key={tip.id} tip={tip} index={groupIdx * 2 + i} />
               ))}
             </section>
           ))}

@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { store } from "@/lib/db";
+import { syncWorldCupTips } from "@/lib/fixtures/worldcup";
 import type { PlatformStats } from "@/lib/types";
 
 export async function GET() {
+  await syncWorldCupTips(store);
   const all = await store.getAllTips();
   const settled = all.filter((t) => t.status === "won" || t.status === "lost");
   const won = settled.filter((t) => t.status === "won");

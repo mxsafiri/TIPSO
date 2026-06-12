@@ -35,8 +35,12 @@ export default function LivePage() {
           {liveTips.length === 0 && (
             <p className="py-16 text-center text-sm text-secondary">{t("live.empty")}</p>
           )}
-          {liveTips.map((tip) => (
-            <div key={tip.id} className="rounded-2xl border border-app bg-card p-4">
+          {liveTips.map((tip, i) => (
+            <div
+              key={tip.id}
+              className="anim-fade-up rounded-2xl border border-app bg-card p-4"
+              style={{ animationDelay: `${i * 70}ms` }}
+            >
               <div className="flex items-center justify-between text-xs">
                 <span className="font-semibold uppercase tracking-wide text-gold">{tip.league}</span>
                 <span className="flex items-center gap-1.5 rounded-full bg-loss/10 px-2 py-0.5 text-[10px] font-bold text-loss">

@@ -49,6 +49,8 @@ export default function HomePage() {
     [todayTips, featured],
   );
 
+  const hasWorldCup = useMemo(() => tips.some((tip) => tip.league.includes("World Cup")), [tips]);
+
   const firstName = user?.name.split(" ")[0];
 
   return (
@@ -68,7 +70,7 @@ export default function HomePage() {
         </div>
 
         {featured && (
-          <div className="mt-3 rounded-2xl border border-gold-500/25 bg-card p-4 shadow-lg shadow-black/5">
+          <div className="anim-fade-up rounded-2xl border border-gold-500/25 bg-card p-4 shadow-lg shadow-black/5 mt-3">
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold uppercase tracking-wide text-gold">{featured.league}</span>
               <span className="text-secondary">{matchTimeLabel(featured.kickoff, lang)}</span>
@@ -102,8 +104,26 @@ export default function HomePage() {
           </div>
         )}
 
+        {hasWorldCup && (
+          <Link
+            href="/tips"
+            className="anim-fade-up press mt-4 flex items-center gap-3 rounded-2xl border border-gold-500/40 bg-gradient-to-r from-navy-800 to-navy-700 px-4 py-3 dark:from-navy-800 dark:to-navy-700"
+            style={{ animationDelay: "80ms" }}
+          >
+            <span className="anim-trophy text-2xl">🏆</span>
+            <div className="flex-1">
+              <div className="text-sm font-bold text-white">{t("wc.banner")}</div>
+              <div className="text-[11px] text-gold-300">{t("wc.bannerDesc")}</div>
+            </div>
+            <span className="text-xs font-semibold text-gold">{t("home.viewAll")}</span>
+          </Link>
+        )}
+
         {stats && (
-          <div className="mt-4 flex items-center gap-3 rounded-2xl border border-app bg-card px-4 py-3">
+          <div
+            className="anim-fade-up mt-4 flex items-center gap-3 rounded-2xl border border-app bg-card px-4 py-3"
+            style={{ animationDelay: "140ms" }}
+          >
             <ShieldCheckIcon className="h-8 w-8 shrink-0 text-gold" />
             <div className="flex-1">
               <div className="text-xs font-semibold">{t("home.todayRecord")}</div>
@@ -131,11 +151,12 @@ export default function HomePage() {
         </div>
 
         <div className="mt-3 space-y-2.5">
-          {hotPicks.map((tip) => (
+          {hotPicks.map((tip, i) => (
             <Link
               key={tip.id}
               href="/tips"
-              className="flex items-center gap-3 rounded-2xl border border-app bg-card px-4 py-3 transition-colors hover:border-gold-500/40"
+              className="anim-fade-up press flex items-center gap-3 rounded-2xl border border-app bg-card px-4 py-3 transition-colors hover:border-gold-500/40"
+              style={{ animationDelay: `${200 + i * 70}ms` }}
             >
               <TeamBadge code={tip.homeCode} color={tip.homeColor} size={38} />
               <div className="min-w-0 flex-1">
@@ -156,7 +177,7 @@ export default function HomePage() {
         {!hasPremium && (
           <Link
             href="/plans"
-            className="mt-6 block rounded-2xl bg-gradient-to-r from-gold-500 to-gold-400 p-4 text-navy-900"
+            className="anim-shimmer press mt-6 block rounded-2xl bg-gradient-to-r from-gold-500 to-gold-400 p-4 text-navy-900"
           >
             <div className="text-base font-extrabold">{t("home.goPremium")} 👑</div>
             <div className="mt-0.5 text-xs font-medium opacity-80">{t("home.goPremiumDesc")}</div>

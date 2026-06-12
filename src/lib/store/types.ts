@@ -45,10 +45,11 @@ export interface DataStore {
   /** Insert or update tips by id (used by live fixture feeds). */
   upsertTips(tips: Tip[]): Promise<void>;
   /**
-   * Remove pending demo/seed fixtures (ids not from the live feed). Called
-   * once real fixtures are flowing so only genuine matches are shown.
+   * Remove ALL demo/seed tips — fixtures and fabricated settled history
+   * (ids not from the live feed). In live-feed mode the ledger must contain
+   * only real, verifiable picks.
    */
-  deletePendingSeedTips(): Promise<void>;
+  deleteSeedTips(): Promise<void>;
 
   // Webhook audit trail
   recordPaymentEvent(provider: string, eventType: string, payload: unknown): Promise<void>;

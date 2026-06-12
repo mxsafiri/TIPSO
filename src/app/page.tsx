@@ -119,7 +119,7 @@ export default function HomePage() {
           </Link>
         )}
 
-        {stats && (
+        {stats && stats.settledTips > 0 && (
           <div
             className="anim-fade-up mt-4 flex items-center gap-3 rounded-2xl border border-app bg-card px-4 py-3"
             style={{ animationDelay: "140ms" }}

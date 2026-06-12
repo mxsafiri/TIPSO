@@ -198,9 +198,9 @@ export const memoryStore: DataStore = {
     }
   },
 
-  async deletePendingSeedTips() {
+  async deleteSeedTips() {
     const s = state();
-    s.tips = s.tips.filter((t) => t.status !== "pending" || t.id.startsWith("wc_"));
+    s.tips = s.tips.filter((t) => t.id.startsWith("wc_"));
   },
 
   async recordPaymentEvent() {

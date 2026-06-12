@@ -124,7 +124,13 @@ async function bootstrap(): Promise<void> {
     )`;
 
   await seedIfEmpty();
-  await refreshFixturesIfStale();
+  if (process.env.FOOTBALL_DATA_API_KEY) {
+    // Live-feed mode: the ledger holds only real picks. Remove any demo
+    // fixtures and the fabricated demo track record.
+    await sql`DELETE FROM tips WHERE id NOT LIKE 'wc\\_%' ESCAPE '\\'`;
+  } else {
+    await refreshFixturesIfStale();
+  }
 }
 
 async function seedIfEmpty(): Promise<void> {
@@ -152,6 +158,9 @@ async function seedIfEmpty(): Promise<void> {
               'wallet', NULL, 'completed', 'TPSREF003', now() - interval '21 days')`;
   }
 
+  // Demo tips exist only in demo mode; live-feed mode starts from a clean
+  // ledger and fills with real fixtures.
+  if (process.env.FOOTBALL_DATA_API_KEY) return;
   const [{ count: tipCount }] = (await sql`SELECT count(*)::int AS count FROM tips`) as Row[] as {
     count: number;
   }[];
@@ -440,9 +449,9 @@ export const postgresStore: DataStore = {
     }
   },
 
-  async deletePendingSeedTips() {
+  async deleteSeedTips() {
     await ensureReady();
-    await sql`DELETE FROM tips WHERE status = 'pending' AND id NOT LIKE 'wc\\_%' ESCAPE '\\'`;
+    await sql`DELETE FROM tips WHERE id NOT LIKE 'wc\\_%' ESCAPE '\\'`;
   },
 
   async recordPaymentEvent(provider, eventType, payload) {

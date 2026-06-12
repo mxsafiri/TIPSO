@@ -86,6 +86,11 @@ export default function StatsPage() {
         )}
 
         <h2 className="mt-6 text-lg font-bold">{t("stats.recentResults")}</h2>
+        {recent.length === 0 && (
+          <p className="mt-3 rounded-2xl border border-dashed border-app bg-card px-4 py-6 text-center text-sm text-secondary">
+            {t("stats.emptyLedger")}
+          </p>
+        )}
         <div className="mt-3 space-y-2">
           {recent.map((tip, i) => (
             <div

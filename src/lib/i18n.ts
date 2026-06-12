@@ -58,6 +58,10 @@ const dict = {
   "stats.streak": { en: "Win Streak", sw: "Mfululizo wa Ushindi" },
   "stats.monthly": { en: "Monthly Breakdown", sw: "Mchanganuo wa Kila Mwezi" },
   "stats.recentResults": { en: "Recent Settled Tips", sw: "Tips Zilizokamilika" },
+  "stats.emptyLedger": {
+    en: "The verified ledger starts now — every pick from here on is tracked publicly, win or lose.",
+    sw: "Rekodi ya wazi inaanza sasa — kila utabiri kuanzia leo unafuatiliwa hadharani, ushinde au upoteze.",
+  },
   "stats.won": { en: "WON", sw: "IMESHINDA" },
   "stats.lost": { en: "LOST", sw: "IMEPOTEA" },
   "stats.month": { en: "Month", sw: "Mwezi" },

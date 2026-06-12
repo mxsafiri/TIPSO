@@ -267,8 +267,8 @@ export async function syncWorldCupTips(store: DataStore, force = false): Promise
     lastDiag.matchesFromApi = data.matches?.length ?? 0;
     if (tips.length > 0) {
       await store.upsertTips(tips);
-      // Real fixtures are flowing — retire the demo/seed fixtures.
-      await store.deletePendingSeedTips();
+      // Real fixtures are flowing — retire all demo/seed data.
+      await store.deleteSeedTips();
     }
     lastDiag.tipsUpserted = tips.length;
   } catch (e) {

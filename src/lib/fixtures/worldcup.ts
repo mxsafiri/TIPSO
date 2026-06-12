@@ -14,6 +14,30 @@ import type { DataStore } from "../store/types";
 const SYNC_INTERVAL_MS = 30 * 60 * 1000;
 let lastSyncAt = 0;
 
+export interface FeedDiagnostics {
+  keyPresent: boolean;
+  lastAttemptAt: string | null;
+  httpStatus: number | null;
+  matchesFromApi: number | null;
+  tipsUpserted: number | null;
+  requestsAvailable: string | null;
+  error: string | null;
+}
+
+let lastDiag: FeedDiagnostics = {
+  keyPresent: false,
+  lastAttemptAt: null,
+  httpStatus: null,
+  matchesFromApi: null,
+  tipsUpserted: null,
+  requestsAvailable: null,
+  error: null,
+};
+
+export function getFeedDiagnostics(): FeedDiagnostics {
+  return { ...lastDiag, keyPresent: Boolean(process.env.FOOTBALL_DATA_API_KEY) };
+}
+
 interface FdTeam {
   id: number;
   name: string;
@@ -202,14 +226,24 @@ function toTip(m: FdMatch): Tip | null {
 
 /**
  * Throttled sync of World Cup fixtures into the tips store. Never throws —
- * a feed outage must not break the app.
+ * a feed outage must not break the app. Pass force=true (diagnostics) to
+ * bypass the throttle.
  */
-export async function syncWorldCupTips(store: DataStore): Promise<void> {
+export async function syncWorldCupTips(store: DataStore, force = false): Promise<void> {
   const apiKey = process.env.FOOTBALL_DATA_API_KEY;
   if (!apiKey) return;
   const now = Date.now();
-  if (now - lastSyncAt < SYNC_INTERVAL_MS) return;
+  if (!force && now - lastSyncAt < SYNC_INTERVAL_MS) return;
   lastSyncAt = now;
+  lastDiag = {
+    keyPresent: true,
+    lastAttemptAt: new Date(now).toISOString(),
+    httpStatus: null,
+    matchesFromApi: null,
+    tipsUpserted: null,
+    requestsAvailable: null,
+    error: null,
+  };
 
   try {
     const from = new Date(now - 2 * 86400000).toISOString().slice(0, 10);
@@ -218,12 +252,24 @@ export async function syncWorldCupTips(store: DataStore): Promise<void> {
       `https://api.football-data.org/v4/competitions/WC/matches?dateFrom=${from}&dateTo=${to}`,
       { headers: { "X-Auth-Token": apiKey }, signal: AbortSignal.timeout(8000) },
     );
-    if (!res.ok) return;
+    lastDiag.httpStatus = res.status;
+    lastDiag.requestsAvailable = res.headers.get("x-requests-available-minute");
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      lastDiag.error = `football-data.org returned ${res.status}: ${body.slice(0, 200)}`;
+      console.error("[worldcup-feed]", lastDiag.error);
+      // Retry sooner than the normal interval after a failure.
+      lastSyncAt = now - SYNC_INTERVAL_MS + 60_000;
+      return;
+    }
     const data = (await res.json()) as { matches?: FdMatch[] };
     const tips = (data.matches ?? []).map(toTip).filter((t): t is Tip => t !== null);
+    lastDiag.matchesFromApi = data.matches?.length ?? 0;
     if (tips.length > 0) await store.upsertTips(tips);
-  } catch {
-    // Allow the next request to retry sooner after a failure.
+    lastDiag.tipsUpserted = tips.length;
+  } catch (e) {
+    lastDiag.error = e instanceof Error ? e.message : String(e);
+    console.error("[worldcup-feed]", lastDiag.error);
     lastSyncAt = now - SYNC_INTERVAL_MS + 60_000;
   }
 }

@@ -32,7 +32,9 @@ export interface DataStore {
   createTransaction(tx: NewTransaction): Promise<Transaction>;
   getTransactions(userId: string): Promise<Transaction[]>;
   findTransactionByReference(reference: string): Promise<Transaction | undefined>;
+  findTransactionByProviderRef(providerRef: string): Promise<Transaction | undefined>;
   setTransactionStatus(id: string, status: Transaction["status"]): Promise<void>;
+  setTransactionProviderRef(id: string, providerRef: string): Promise<void>;
 
   // Withdrawals
   createWithdrawalRequest(req: Omit<WithdrawalRequest, "id" | "status" | "createdAt">): Promise<WithdrawalRequest>;

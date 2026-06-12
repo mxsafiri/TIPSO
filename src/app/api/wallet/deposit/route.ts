@@ -58,6 +58,9 @@ export async function POST(req: Request) {
       throw err;
     }
 
+    if (collection.providerRef) {
+      await store.setTransactionProviderRef(tx.id, collection.providerRef);
+    }
     if (collection.status === "completed") {
       await settleTransaction(reference);
     }

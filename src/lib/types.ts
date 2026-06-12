@@ -68,6 +68,8 @@ export interface Transaction {
   reference: string;
   /** Plan being purchased, for subscription transactions */
   planId?: PlanId;
+  /** Payment-provider id (e.g. nTZS deposit id) for webhook matching */
+  providerRef?: string;
   createdAt: string;
 }
 

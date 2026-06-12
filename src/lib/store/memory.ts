@@ -154,9 +154,18 @@ export const memoryStore: DataStore = {
     return state().transactions.find((t) => t.reference === reference);
   },
 
+  async findTransactionByProviderRef(providerRef) {
+    return state().transactions.find((t) => t.providerRef === providerRef);
+  },
+
   async setTransactionStatus(id, status) {
     const tx = state().transactions.find((t) => t.id === id);
     if (tx) tx.status = status;
+  },
+
+  async setTransactionProviderRef(id, providerRef) {
+    const tx = state().transactions.find((t) => t.id === id);
+    if (tx) tx.providerRef = providerRef;
   },
 
   async createWithdrawalRequest(req) {

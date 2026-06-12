@@ -91,7 +91,11 @@ async function startPlan(userId: string, planId: Subscription["planId"], duratio
  */
 export async function settleTransaction(reference: string): Promise<Transaction | null> {
   const tx = await store.findTransactionByReference(reference);
-  if (!tx || tx.status === "completed") return tx ?? null;
+  return tx ? settleTransactionRecord(tx) : null;
+}
+
+export async function settleTransactionRecord(tx: Transaction): Promise<Transaction> {
+  if (tx.status === "completed") return tx;
 
   await store.setTransactionStatus(tx.id, "completed");
   if (tx.type === "subscription" && tx.planId) {

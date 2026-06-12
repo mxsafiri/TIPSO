@@ -1,16 +1,27 @@
 import { NextResponse } from "next/server";
-import { settleTransaction, store } from "@/lib/db";
+import { settleTransactionRecord, store } from "@/lib/db";
 import { verifyWebhookSignature } from "@/lib/payments";
 
+const SUCCESS_STATUSES = new Set(["completed", "minted", "success", "settled", "confirmed"]);
+const FAILURE_STATUSES = new Set(["failed", "cancelled", "rejected", "expired"]);
+
+function firstString(payload: Record<string, unknown>, keys: string[]): string | null {
+  for (const key of keys) {
+    const value = payload[key];
+    if (typeof value === "string" && value) return value;
+  }
+  return null;
+}
+
 /**
- * nTZS settlement webhook. Expected to be called when a treasury collection
- * settles. The payload shape is a sensible default pending the published spec;
- * we match on our external reference and complete the corresponding
- * transaction (plan activation or wallet credit) idempotently.
+ * nTZS settlement webhook. Fired when a treasury deposit settles (nTZS minted
+ * to the treasury wallet). We match the event to our transaction by the nTZS
+ * deposit id (provider ref) or our own reference, then complete it
+ * idempotently (plan activation or wallet credit).
  */
 export async function POST(req: Request) {
   const rawBody = await req.text();
-  const signature = req.headers.get("x-ntzs-signature");
+  const signature = req.headers.get("x-ntzs-signature") ?? req.headers.get("x-snippe-signature");
 
   if (!verifyWebhookSignature(rawBody, signature)) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
@@ -23,28 +34,35 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const eventType = typeof payload.event === "string" ? payload.event : "unknown";
+  const eventType = firstString(payload, ["event", "type", "eventType"]) ?? "unknown";
   await store.recordPaymentEvent("ntzs", eventType, payload);
 
-  const reference =
-    typeof payload.external_reference === "string"
-      ? payload.external_reference
-      : typeof payload.reference === "string"
-        ? payload.reference
-        : null;
+  // The deposit object may be nested (e.g. { event, data: {...} }).
+  const data =
+    typeof payload.data === "object" && payload.data !== null
+      ? (payload.data as Record<string, unknown>)
+      : payload;
 
-  if (!reference) {
-    return NextResponse.json({ error: "Missing reference" }, { status: 400 });
+  const providerRef = firstString(data, ["id", "depositId", "deposit_id"]);
+  const reference = firstString(data, ["external_reference", "externalReference", "reference"]);
+
+  const tx =
+    (providerRef ? await store.findTransactionByProviderRef(providerRef) : undefined) ??
+    (reference ? await store.findTransactionByReference(reference) : undefined);
+
+  if (!tx) {
+    // Not ours (or arrived before the transaction committed) — acknowledge so
+    // the event is retried/audited rather than erroring forever.
+    return NextResponse.json({ ok: true, matched: false });
   }
 
-  const status = typeof payload.status === "string" ? payload.status.toLowerCase() : "";
-  if (status === "completed" || status === "success" || status === "settled") {
-    const tx = await settleTransaction(reference);
-    return NextResponse.json({ ok: true, settled: Boolean(tx) });
+  const status = (firstString(data, ["status"]) ?? eventType).toLowerCase();
+  if (SUCCESS_STATUSES.has(status) || [...SUCCESS_STATUSES].some((s) => status.includes(s))) {
+    await settleTransactionRecord(tx);
+    return NextResponse.json({ ok: true, settled: true });
   }
-  if (status === "failed" || status === "cancelled") {
-    const tx = await store.findTransactionByReference(reference);
-    if (tx && tx.status === "pending") await store.setTransactionStatus(tx.id, "failed");
+  if (FAILURE_STATUSES.has(status) || [...FAILURE_STATUSES].some((s) => status.includes(s))) {
+    if (tx.status === "pending") await store.setTransactionStatus(tx.id, "failed");
     return NextResponse.json({ ok: true, settled: false });
   }
 

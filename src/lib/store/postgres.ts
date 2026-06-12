@@ -73,8 +73,11 @@ async function bootstrap(): Promise<void> {
       status TEXT NOT NULL,
       reference TEXT NOT NULL UNIQUE,
       plan_id TEXT,
+      provider_ref TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )`;
+  // Lightweight migration for databases created before provider_ref existed.
+  await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS provider_ref TEXT`;
   await sql`
     CREATE TABLE IF NOT EXISTS withdrawal_requests (
       id TEXT PRIMARY KEY,
@@ -233,6 +236,7 @@ function mapTransaction(r: Row): Transaction {
     status: r.status as Transaction["status"],
     reference: r.reference as string,
     planId: (r.plan_id as Transaction["planId"] | null) ?? undefined,
+    providerRef: (r.provider_ref as string | null) ?? undefined,
     createdAt: toIso(r.created_at),
   };
 }
@@ -362,9 +366,20 @@ export const postgresStore: DataStore = {
     return rows[0] ? mapTransaction(rows[0]) : undefined;
   },
 
+  async findTransactionByProviderRef(providerRef) {
+    await ensureReady();
+    const rows = (await sql`SELECT * FROM transactions WHERE provider_ref = ${providerRef} LIMIT 1`) as Row[];
+    return rows[0] ? mapTransaction(rows[0]) : undefined;
+  },
+
   async setTransactionStatus(id, status) {
     await ensureReady();
     await sql`UPDATE transactions SET status = ${status} WHERE id = ${id}`;
+  },
+
+  async setTransactionProviderRef(id, providerRef) {
+    await ensureReady();
+    await sql`UPDATE transactions SET provider_ref = ${providerRef} WHERE id = ${id}`;
   },
 
   async createWithdrawalRequest(req) {

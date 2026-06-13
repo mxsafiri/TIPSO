@@ -14,6 +14,7 @@ interface AppContextValue {
   user: PublicUser | null;
   userLoaded: boolean;
   refreshUser: () => Promise<void>;
+  guapEnabled: boolean;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -29,8 +30,13 @@ export default function AppProviders({ children }: { children: React.ReactNode }
   const [theme, setThemeState] = useState<"dark" | "light">("dark");
   const [user, setUser] = useState<PublicUser | null>(null);
   const [userLoaded, setUserLoaded] = useState(false);
+  const [guapEnabled, setGuapEnabled] = useState(false);
 
   useEffect(() => {
+    fetch("/api/config", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setGuapEnabled(Boolean(d.guapEnabled)))
+      .catch(() => undefined);
     const storedLang = window.localStorage.getItem("tipso_lang") as Lang | null;
     if (storedLang === "en" || storedLang === "sw") setLangState(storedLang);
     const storedTheme = window.localStorage.getItem("tipso_theme");
@@ -70,7 +76,7 @@ export default function AppProviders({ children }: { children: React.ReactNode }
   const t = (key: DictKey) => translate(key, lang);
 
   return (
-    <AppContext.Provider value={{ lang, setLang, t, theme, setTheme, user, userLoaded, refreshUser }}>
+    <AppContext.Provider value={{ lang, setLang, t, theme, setTheme, user, userLoaded, refreshUser, guapEnabled }}>
       {children}
     </AppContext.Provider>
   );

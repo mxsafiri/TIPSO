@@ -7,6 +7,27 @@ const dict = {
   "nav.live": { en: "Live", sw: "Moja kwa Moja" },
   "nav.stats": { en: "Stats", sw: "Takwimu" },
   "nav.account": { en: "Account", sw: "Akaunti" },
+  "nav.markets": { en: "Markets", sw: "Soko" },
+
+  // Markets (GUAP prediction markets)
+  "markets.title": { en: "Prediction Markets", sw: "Soko la Utabiri" },
+  "markets.subtitle": {
+    en: "Trade YES or NO on real-world events. Powered by GUAP.",
+    sw: "Weka YES au NO kwenye matukio halisi. Inaendeshwa na GUAP.",
+  },
+  "markets.empty": {
+    en: "No open markets right now. Check back soon.",
+    sw: "Hakuna masoko yaliyo wazi sasa. Rudi baadaye.",
+  },
+  "markets.yes": { en: "YES", sw: "NDIYO" },
+  "markets.no": { en: "NO", sw: "HAPANA" },
+  "markets.volume": { en: "Volume", sw: "Jumla" },
+  "markets.closes": { en: "Closes", sw: "Inafunga" },
+  "markets.trade": { en: "Trade on GUAP", sw: "Fanya biashara GUAP" },
+  "markets.disclaimer": {
+    en: "Prediction-market trading is provided by GUAP. 18+. Trade responsibly.",
+    sw: "Biashara ya soko la utabiri inatolewa na GUAP. Miaka 18+. Fanya biashara kwa busara.",
+  },
 
   // Home
   "home.greeting": { en: "Hi", sw: "Habari" },

@@ -3,19 +3,34 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useApp } from "./AppProviders";
-import { HomeIcon, LiveIcon, StatsIcon, TicketIcon, UserIcon } from "./Icons";
+import { HomeIcon, LiveIcon, MarketsIcon, StatsIcon, TicketIcon, UserIcon } from "./Icons";
+import type { DictKey } from "@/lib/i18n";
 
-const items = [
+type NavItem = { href: string; key: DictKey; Icon: (p: { className?: string }) => React.ReactNode };
+
+const baseItems: NavItem[] = [
   { href: "/", key: "nav.home", Icon: HomeIcon },
   { href: "/tips", key: "nav.tips", Icon: TicketIcon },
   { href: "/live", key: "nav.live", Icon: LiveIcon },
   { href: "/stats", key: "nav.stats", Icon: StatsIcon },
   { href: "/account", key: "nav.account", Icon: UserIcon },
-] as const;
+];
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const { t } = useApp();
+  const { t, guapEnabled } = useApp();
+
+  // The Markets tab appears (after Tips) only when GUAP is configured.
+  const items: NavItem[] = guapEnabled
+    ? [
+        baseItems[0],
+        baseItems[1],
+        { href: "/markets", key: "nav.markets", Icon: MarketsIcon },
+        baseItems[2],
+        baseItems[3],
+        baseItems[4],
+      ]
+    : baseItems;
 
   return (
     <nav className="fixed bottom-0 left-1/2 z-40 w-full max-w-md -translate-x-1/2 border-t border-app bg-card/95 backdrop-blur">

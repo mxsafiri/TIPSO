@@ -33,6 +33,15 @@ export function LiveIcon({ className }: IconProps) {
   );
 }
 
+export function MarketsIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 17l5-5 4 3 7-8" />
+      <path d="M16 4h5v5" />
+    </svg>
+  );
+}
+
 export function StatsIcon({ className }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

@@ -13,14 +13,26 @@
  * without leaving the app.
  *
  * Confirmed API surface (Bearer `gp_live_…`):
- *   POST /api/v1/users   { externalId, ... }
- *   POST /api/v1/trades  { externalId, marketId, side: "YES"|"NO", amountTzs }
+ *   GET  /api/v1/markets             List all markets
+ *   GET  /api/v1/markets/:id         Single market details
+ *   POST /api/v1/trades              Place a trade (stake YES/NO)
+ *   GET  /api/v1/trades              User's trade history
+ *   GET  /api/v1/positions           User's positions / portfolio
+ *   POST /api/v1/positions/redeem    Redeem winnings from a resolved market
+ *   GET  /api/v1/wallet/transactions Wallet history
+ *   POST /api/v1/users               Provision a user
  *
- * The market-listing, positions and settlement-webhook shapes are not yet
- * documented to us, so every response assumption is isolated in normalizeMarket
- * and the candidate endpoint list below. Hit /api/guap-status once the key is
- * live to see the real payloads, then those two spots get corrected — nothing
- * else changes. Gated on GUAP_API_KEY; absent, the Markets tab stays hidden.
+ * Notes:
+ * - There is NO create-market endpoint — markets are GUAP-curated, and
+ *   liquidity is pooled across GUAP's whole partner network (TIPSO users are
+ *   matched against everyone, not just each other).
+ * - Settlement is PULL-based: poll GET /positions for resolved markets, then
+ *   POST /positions/redeem to claim winnings into the wallet. No webhook needed.
+ *
+ * The per-market response field names aren't documented to us yet, so the
+ * body shape is isolated in normalizeMarket — hit /api/guap-status once the key
+ * is live to see the real fields. Gated on GUAP_API_KEY; absent, the Markets
+ * tab stays hidden.
  */
 
 const DEFAULT_BASE_URL = "https://guap.gold/api/v1";
@@ -144,8 +156,8 @@ function extractMarketArray(data: unknown): unknown[] {
   return [];
 }
 
-/** Candidate market-list endpoints, tried in order until one returns markets. */
-const MARKET_ENDPOINTS = ["/markets?status=open", "/markets", "/markets/active", "/events"];
+/** Documented market-list endpoint (kept as a list for the diagnostics probe). */
+const MARKET_ENDPOINTS = ["/markets"];
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -174,6 +186,22 @@ export async function listMarkets(force = false): Promise<GuapMarket[]> {
     }
   }
   return cache?.markets ?? [];
+}
+
+/** Single market details via GET /markets/:id. */
+export async function getMarket(id: string): Promise<GuapMarket | null> {
+  if (!isGuapConfigured()) return null;
+  try {
+    const { ok, data } = await guapFetch(`/markets/${encodeURIComponent(id)}`);
+    if (!ok) return null;
+    const obj =
+      typeof data === "object" && data !== null && "market" in (data as Raw)
+        ? (data as Raw).market
+        : data;
+    return normalizeMarket(obj);
+  } catch {
+    return null;
+  }
 }
 
 /** Raw probe for diagnostics — surfaces the real shape, exposes no secrets. */

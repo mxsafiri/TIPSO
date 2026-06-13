@@ -9,11 +9,11 @@ const dict = {
   "nav.account": { en: "Account", sw: "Akaunti" },
   "nav.markets": { en: "Markets", sw: "Soko" },
 
-  // Markets (GUAP prediction markets)
-  "markets.title": { en: "Prediction Markets", sw: "Soko la Utabiri" },
+  // Markets (GUAP peer-to-peer staking markets)
+  "markets.title": { en: "Staking Markets", sw: "Soko la Dau" },
   "markets.subtitle": {
-    en: "Trade YES or NO on real-world events. Powered by GUAP.",
-    sw: "Weka YES au NO kwenye matukio halisi. Inaendeshwa na GUAP.",
+    en: "Stake YES or NO against other punters — no bookmaker. Powered by GUAP.",
+    sw: "Weka dau YES au NO dhidi ya wachezaji wengine — hakuna kampuni. Inaendeshwa na GUAP.",
   },
   "markets.empty": {
     en: "No open markets right now. Check back soon.",
@@ -21,12 +21,13 @@ const dict = {
   },
   "markets.yes": { en: "YES", sw: "NDIYO" },
   "markets.no": { en: "NO", sw: "HAPANA" },
-  "markets.volume": { en: "Volume", sw: "Jumla" },
+  "markets.pool": { en: "Pool", sw: "Mfuko" },
   "markets.closes": { en: "Closes", sw: "Inafunga" },
-  "markets.trade": { en: "Trade on GUAP", sw: "Fanya biashara GUAP" },
+  "markets.stake": { en: "Stake on GUAP", sw: "Weka Dau GUAP" },
+  "markets.crowdLabel": { en: "Crowd prediction", sw: "Utabiri wa wengi" },
   "markets.disclaimer": {
-    en: "Prediction-market trading is provided by GUAP. 18+. Trade responsibly.",
-    sw: "Biashara ya soko la utabiri inatolewa na GUAP. Miaka 18+. Fanya biashara kwa busara.",
+    en: "Peer-to-peer staking is provided by GUAP — you stake against other users, not a bookmaker. 18+. Stake responsibly.",
+    sw: "Dau la mtu kwa mtu linatolewa na GUAP — unaweka dau dhidi ya watumiaji wengine, si kampuni. Miaka 18+. Weka dau kwa busara.",
   },
 
   // Home

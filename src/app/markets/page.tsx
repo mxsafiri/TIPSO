@@ -54,7 +54,10 @@ export default function MarketsPage() {
 
               <h2 className="mt-2 text-sm font-bold leading-snug">{m.title}</h2>
 
-              <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="mt-2 text-[10px] uppercase tracking-wide text-secondary">
+                {t("markets.crowdLabel")}
+              </div>
+              <div className="mt-1 grid grid-cols-2 gap-2">
                 <div className="rounded-xl border border-win/25 bg-win/10 px-3 py-2 text-center">
                   <div className="text-[10px] font-bold uppercase tracking-wide text-win">
                     {t("markets.yes")}
@@ -74,9 +77,9 @@ export default function MarketsPage() {
               </div>
 
               <div className="mt-3 flex items-center justify-between">
-                {m.volumeTzs !== null ? (
+                {m.poolTzs !== null ? (
                   <span className="text-xs text-secondary">
-                    {t("markets.volume")}: <strong className="text-primary">{formatTzs(m.volumeTzs)}</strong>
+                    {t("markets.pool")}: <strong className="text-primary">{formatTzs(m.poolTzs)}</strong>
                   </span>
                 ) : (
                   <span />
@@ -87,7 +90,7 @@ export default function MarketsPage() {
                   rel="noopener noreferrer"
                   className="press rounded-lg bg-gold-400 px-3.5 py-2 text-xs font-bold text-navy-900 transition-opacity hover:opacity-90"
                 >
-                  {t("markets.trade")} ↗
+                  {t("markets.stake")} ↗
                 </a>
               </div>
             </div>

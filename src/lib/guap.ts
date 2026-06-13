@@ -1,11 +1,16 @@
 /**
- * GUAP prediction-market integration (guap.gold).
+ * GUAP peer-to-peer staking integration (guap.gold).
  *
- * GUAP is a partner-embeddable prediction market for African events (politics,
- * sports, business). TIPSO surfaces GUAP markets alongside its fixtures so a
- * user can go from intelligence ("France to Win") to action (trade YES on a
- * related market) without leaving the app — a fifth revenue stream, since
- * partners keep their trading fees.
+ * GUAP is a partner-embeddable P2P staking exchange for African events
+ * (politics, sports, business): users stake YES or NO against EACH OTHER —
+ * there is no bookmaker taking the other side. The YES/NO percentages are the
+ * crowd's implied probability (the share of the pool on each side), not
+ * house-set odds; the pool is the total staked. Winners split the pool minus
+ * fees, and partners keep their fee share — a fifth TIPSO revenue stream.
+ *
+ * TIPSO surfaces GUAP markets alongside its fixtures so a user can go from
+ * intelligence ("France to Win") to action (stake YES on a related market)
+ * without leaving the app.
  *
  * Confirmed API surface (Bearer `gp_live_…`):
  *   POST /api/v1/users   { externalId, ... }
@@ -25,12 +30,13 @@ export interface GuapMarket {
   id: string;
   title: string;
   category: string;
-  /** Implied YES probability, 0-100, when available. */
+  /** Crowd-implied YES probability (share of the pool staked YES), 0-100. */
   yesPercent: number | null;
   noPercent: number | null;
-  volumeTzs: number | null;
+  /** Total staked in the market pool, TZS. */
+  poolTzs: number | null;
   closesAt: string | null;
-  /** External link to the market on GUAP, for the deep-link trade flow. */
+  /** External link to the market on GUAP, for the deep-link stake flow. */
   url: string | null;
 }
 
@@ -110,7 +116,18 @@ export function normalizeMarket(raw: unknown): GuapMarket | null {
     category: str(o, ["category", "type", "tag", "topic"]) ?? "Markets",
     yesPercent,
     noPercent,
-    volumeTzs: num(o, ["volumeTzs", "volume_tzs", "volume", "liquidity"]),
+    poolTzs: num(o, [
+      "poolTzs",
+      "pool_tzs",
+      "pool",
+      "totalStaked",
+      "total_staked",
+      "stakedTzs",
+      "volumeTzs",
+      "volume_tzs",
+      "volume",
+      "liquidity",
+    ]),
     closesAt: str(o, ["closesAt", "closes_at", "endDate", "end_date", "resolutionDate", "expiresAt"]),
     url: str(o, ["url", "link", "shareUrl", "permalink"]),
   };
@@ -202,8 +219,9 @@ export interface PlaceTradeInput {
 }
 
 /**
- * Place a trade on GUAP. Defined for the phase-2 wallet-funded flow; not yet
- * wired to the UI pending the settlement-webhook spec and regulatory sign-off.
+ * Place a stake on GUAP (YES/NO against the peer pool). Defined for the phase-2
+ * wallet-funded flow; not yet wired to the UI pending the settlement-webhook
+ * spec and regulatory sign-off.
  */
 export async function placeTrade(
   input: PlaceTradeInput,

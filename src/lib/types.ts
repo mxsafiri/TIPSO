@@ -91,6 +91,48 @@ export interface WithdrawalRequest {
   processedAt?: string;
 }
 
+export type MarketSide = "YES" | "NO";
+export type MarketStatus = "open" | "resolved" | "void";
+
+/** A Betua-native peer-to-peer staking market, created by a user. */
+export interface Market {
+  id: string;
+  creatorId: string;
+  creatorName: string;
+  question: string;
+  category: string;
+  /** ISO close time — staking is allowed until then. */
+  closesAt: string;
+  status: MarketStatus;
+  outcome: MarketSide | null;
+  createdAt: string;
+  resolvedAt?: string;
+}
+
+/** A single stake placed by a user on a market. */
+export interface MarketStake {
+  id: string;
+  marketId: string;
+  userId: string;
+  userName: string;
+  side: MarketSide;
+  amountTzs: number;
+  /** Payout credited on settlement (parimutuel); null until resolved. */
+  payoutTzs: number | null;
+  settled: boolean;
+  createdAt: string;
+}
+
+/** Market enriched with pool aggregates for display. */
+export interface MarketView extends Market {
+  yesPoolTzs: number;
+  noPoolTzs: number;
+  totalPoolTzs: number;
+  yesPercent: number | null;
+  noPercent: number | null;
+  stakerCount: number;
+}
+
 export interface User {
   id: string;
   name: string;

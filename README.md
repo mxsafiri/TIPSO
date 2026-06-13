@@ -9,9 +9,14 @@ Two sides to the product:
 - **Intelligence** — data- and AI-backed predictions with confidence scores and
   a transparent, publicly tracked win/loss ledger (sits on top of bookmakers,
   never handles bets); premium tiers paid via mobile money.
-- **Exchange** — native peer-to-peer prediction markets settled in nTZS: stake
-  YES/NO from your wallet, hold positions, redeem winnings. Built on the GUAP
-  staking rails with Betua as the front-end.
+- **Exchange** — Betua's own native peer-to-peer prediction market. Any user
+  creates a YES/NO market, others stake nTZS from their wallet against each
+  other, and settlement is **parimutuel**: when the creator resolves the
+  outcome, winners get their stake back plus a pro-rata share of the losing
+  pool (5% platform fee, taken only from losing money), credited straight to
+  the wallet. No order book, no bookmaker — so a market is always settleable
+  regardless of how lopsided the stakes are. Settlement math lives in
+  `src/lib/exchange.ts`; orchestration (wallet debits/credits) in `src/lib/db.ts`.
 
 > The user-facing brand is **Betua**; internal identifiers (env vars, cookies,
 > package name) remain `tipso`/`TIPSO` to avoid config churn.

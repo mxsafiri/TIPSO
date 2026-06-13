@@ -8,9 +8,11 @@ import type { DictKey } from "@/lib/i18n";
 
 type NavItem = { href: string; key: DictKey; Icon: (p: { className?: string }) => React.ReactNode };
 
-const baseItems: NavItem[] = [
+// Markets is a core Betua feature (native peer-to-peer exchange), always shown.
+const items: NavItem[] = [
   { href: "/", key: "nav.home", Icon: HomeIcon },
   { href: "/tips", key: "nav.tips", Icon: TicketIcon },
+  { href: "/markets", key: "nav.markets", Icon: MarketsIcon },
   { href: "/live", key: "nav.live", Icon: LiveIcon },
   { href: "/stats", key: "nav.stats", Icon: StatsIcon },
   { href: "/account", key: "nav.account", Icon: UserIcon },
@@ -18,19 +20,7 @@ const baseItems: NavItem[] = [
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const { t, guapEnabled } = useApp();
-
-  // The Markets tab appears (after Tips) only when GUAP is configured.
-  const items: NavItem[] = guapEnabled
-    ? [
-        baseItems[0],
-        baseItems[1],
-        { href: "/markets", key: "nav.markets", Icon: MarketsIcon },
-        baseItems[2],
-        baseItems[3],
-        baseItems[4],
-      ]
-    : baseItems;
+  const { t } = useApp();
 
   return (
     <nav className="fixed bottom-0 left-1/2 z-40 w-full max-w-md -translate-x-1/2 border-t border-app bg-card/95 backdrop-blur">

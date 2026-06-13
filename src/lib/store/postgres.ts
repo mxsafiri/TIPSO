@@ -1,7 +1,7 @@
 import { neon } from "@neondatabase/serverless";
 import { buildSeedTips } from "../seed";
 import { hashPassword, newId } from "../password";
-import type { Subscription, Tip, Transaction, User, WithdrawalRequest } from "../types";
+import type { Market, MarketStake, Subscription, Tip, Transaction, User, WithdrawalRequest } from "../types";
 import type { DataStore, NewTransaction } from "./types";
 
 type Row = Record<string, unknown>;
@@ -133,6 +133,33 @@ async function bootstrap(): Promise<void> {
       payload JSONB,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )`;
+  await sql`
+    CREATE TABLE IF NOT EXISTS markets (
+      id TEXT PRIMARY KEY,
+      creator_id TEXT NOT NULL REFERENCES users(id),
+      creator_name TEXT NOT NULL,
+      question TEXT NOT NULL,
+      category TEXT NOT NULL,
+      closes_at TIMESTAMPTZ NOT NULL,
+      status TEXT NOT NULL DEFAULT 'open',
+      outcome TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      resolved_at TIMESTAMPTZ
+    )`;
+  await sql`
+    CREATE TABLE IF NOT EXISTS market_stakes (
+      id TEXT PRIMARY KEY,
+      market_id TEXT NOT NULL REFERENCES markets(id),
+      user_id TEXT NOT NULL REFERENCES users(id),
+      user_name TEXT NOT NULL,
+      side TEXT NOT NULL,
+      amount_tzs INTEGER NOT NULL,
+      payout_tzs INTEGER,
+      settled BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_stakes_market ON market_stakes(market_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_stakes_user ON market_stakes(user_id)`;
 
   await seedIfEmpty();
   if (process.env.FOOTBALL_DATA_API_KEY) {
@@ -495,4 +522,85 @@ export const postgresStore: DataStore = {
       INSERT INTO payment_events (id, provider, event_type, payload)
       VALUES (${newId("evt")}, ${provider}, ${eventType}, ${JSON.stringify(payload)}::jsonb)`;
   },
+
+  async createMarket(m) {
+    await ensureReady();
+    await sql`
+      INSERT INTO markets (id, creator_id, creator_name, question, category, closes_at, status, outcome, created_at, resolved_at)
+      VALUES (${m.id}, ${m.creatorId}, ${m.creatorName}, ${m.question}, ${m.category}, ${m.closesAt},
+              ${m.status}, ${m.outcome ?? null}, ${m.createdAt}, ${m.resolvedAt ?? null})`;
+  },
+
+  async getMarkets() {
+    await ensureReady();
+    const rows = (await sql`SELECT * FROM markets ORDER BY created_at DESC LIMIT 200`) as Row[];
+    return rows.map(mapMarket);
+  },
+
+  async getMarketById(id) {
+    await ensureReady();
+    const rows = (await sql`SELECT * FROM markets WHERE id = ${id} LIMIT 1`) as Row[];
+    return rows[0] ? mapMarket(rows[0]) : undefined;
+  },
+
+  async resolveMarketRecord(id, status, outcome, resolvedAt) {
+    await ensureReady();
+    await sql`
+      UPDATE markets SET status = ${status}, outcome = ${outcome ?? null}, resolved_at = ${resolvedAt}
+      WHERE id = ${id}`;
+  },
+
+  async createStake(s) {
+    await ensureReady();
+    await sql`
+      INSERT INTO market_stakes (id, market_id, user_id, user_name, side, amount_tzs, payout_tzs, settled, created_at)
+      VALUES (${s.id}, ${s.marketId}, ${s.userId}, ${s.userName}, ${s.side}, ${s.amountTzs},
+              ${s.payoutTzs ?? null}, ${s.settled}, ${s.createdAt})`;
+  },
+
+  async getStakesByMarket(marketId) {
+    await ensureReady();
+    const rows = (await sql`SELECT * FROM market_stakes WHERE market_id = ${marketId}`) as Row[];
+    return rows.map(mapStake);
+  },
+
+  async getStakesByUser(userId) {
+    await ensureReady();
+    const rows = (await sql`SELECT * FROM market_stakes WHERE user_id = ${userId} ORDER BY created_at DESC`) as Row[];
+    return rows.map(mapStake);
+  },
+
+  async settleStake(id, payoutTzs) {
+    await ensureReady();
+    await sql`UPDATE market_stakes SET payout_tzs = ${payoutTzs}, settled = TRUE WHERE id = ${id}`;
+  },
 };
+
+function mapMarket(r: Row): Market {
+  return {
+    id: r.id as string,
+    creatorId: r.creator_id as string,
+    creatorName: r.creator_name as string,
+    question: r.question as string,
+    category: r.category as string,
+    closesAt: toIso(r.closes_at),
+    status: r.status as Market["status"],
+    outcome: (r.outcome as Market["outcome"] | null) ?? null,
+    createdAt: toIso(r.created_at),
+    resolvedAt: r.resolved_at ? toIso(r.resolved_at) : undefined,
+  };
+}
+
+function mapStake(r: Row): MarketStake {
+  return {
+    id: r.id as string,
+    marketId: r.market_id as string,
+    userId: r.user_id as string,
+    userName: r.user_name as string,
+    side: r.side as MarketStake["side"],
+    amountTzs: r.amount_tzs as number,
+    payoutTzs: (r.payout_tzs as number | null) ?? null,
+    settled: Boolean(r.settled),
+    createdAt: toIso(r.created_at),
+  };
+}

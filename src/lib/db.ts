@@ -2,8 +2,18 @@ import { memoryStore } from "./store/memory";
 import { postgresStore } from "./store/postgres";
 import { getPlan } from "./plans";
 import { newId, newReference, verifyPassword as verify } from "./password";
+import { computeMarketView, computeSettlement, hasClosed, isMarketOpen } from "./exchange";
 import type { DataStore } from "./store/types";
-import type { PublicUser, Subscription, Transaction, User } from "./types";
+import type {
+  Market,
+  MarketSide,
+  MarketStake,
+  MarketView,
+  PublicUser,
+  Subscription,
+  Transaction,
+  User,
+} from "./types";
 
 /**
  * Single data-access entry point. Uses Neon Postgres when DATABASE_URL is set
@@ -136,4 +146,175 @@ export async function settleTransactionRecord(tx: Transaction): Promise<Transact
     await store.adjustWallet(tx.userId, tx.amountTzs);
   }
   return { ...tx, status: "completed" };
+}
+
+// ---------------------------------------------------------------------------
+// Betua-native peer-to-peer exchange
+// ---------------------------------------------------------------------------
+
+const MIN_STAKE = 500;
+const MAX_STAKE = 5_000_000;
+
+async function recordStake(
+  user: User,
+  marketId: string,
+  side: MarketSide,
+  amountTzs: number,
+): Promise<MarketStake> {
+  // Debit the wallet into escrow; adjustWallet rejects on insufficient funds.
+  await store.adjustWallet(user.id, -amountTzs);
+  const stake: MarketStake = {
+    id: newId("stk"),
+    marketId,
+    userId: user.id,
+    userName: user.name,
+    side,
+    amountTzs,
+    payoutTzs: null,
+    settled: false,
+    createdAt: new Date().toISOString(),
+  };
+  try {
+    await store.createStake(stake);
+  } catch (e) {
+    await store.adjustWallet(user.id, amountTzs); // refund if the write fails
+    throw e;
+  }
+  await store.createTransaction({
+    userId: user.id,
+    type: "stake",
+    description: `Stake ${side}`,
+    amountTzs,
+    provider: "wallet",
+    status: "completed",
+    reference: newReference(),
+    providerRef: marketId,
+  });
+  return stake;
+}
+
+/** Create a market and place the creator's opening stake atomically-ish. */
+export async function createMarketWithStake(input: {
+  user: User;
+  question: string;
+  category: string;
+  closesAt: string;
+  side: MarketSide;
+  amountTzs: number;
+}): Promise<Market> {
+  const { user, question, category, closesAt, side, amountTzs } = input;
+  if (amountTzs < MIN_STAKE || amountTzs > MAX_STAKE) throw new Error("Invalid stake amount");
+  if (new Date(closesAt).getTime() <= Date.now()) throw new Error("Close time must be in the future");
+
+  const market: Market = {
+    id: newId("mkt"),
+    creatorId: user.id,
+    creatorName: user.name,
+    question: question.trim().slice(0, 200),
+    category,
+    closesAt,
+    status: "open",
+    outcome: null,
+    createdAt: new Date().toISOString(),
+  };
+  // Take the opening stake first; if it fails (e.g. no balance) no market is made.
+  await recordStakePrecheck(user, amountTzs);
+  await store.createMarket(market);
+  await recordStake(user, market.id, side, amountTzs);
+  return market;
+}
+
+async function recordStakePrecheck(user: User, amountTzs: number): Promise<void> {
+  const fresh = await store.findUserById(user.id);
+  if (!fresh || fresh.walletTzs < amountTzs) throw new Error("Insufficient wallet balance");
+}
+
+export async function placeMarketStake(
+  user: User,
+  marketId: string,
+  side: MarketSide,
+  amountTzs: number,
+): Promise<void> {
+  if (amountTzs < MIN_STAKE || amountTzs > MAX_STAKE) throw new Error("Invalid stake amount");
+  const market = await store.getMarketById(marketId);
+  if (!market) throw new Error("Market not found");
+  if (!isMarketOpen(market)) throw new Error("Market is closed");
+  await recordStakePrecheck(user, amountTzs);
+  await recordStake(user, marketId, side, amountTzs);
+}
+
+/**
+ * Resolve a market and pay out the pool. Only the creator or an admin may
+ * resolve, and only after the close time. Idempotent: a resolved market is a
+ * no-op. Winners are credited to their wallets immediately.
+ */
+export async function resolveMarket(
+  marketId: string,
+  outcome: MarketSide,
+  byUserId: string | "admin",
+): Promise<{ paidOutTzs: number; feeTzs: number; voided: boolean }> {
+  const market = await store.getMarketById(marketId);
+  if (!market) throw new Error("Market not found");
+  if (market.status !== "open") throw new Error("Market already resolved");
+  if (byUserId !== "admin" && market.creatorId !== byUserId) {
+    throw new Error("Only the creator can resolve this market");
+  }
+  if (!hasClosed(market)) throw new Error("Market has not closed yet");
+
+  const stakes = await store.getStakesByMarket(marketId);
+  const settlement = computeSettlement(stakes, outcome);
+
+  for (const line of settlement.lines) {
+    await store.settleStake(line.stakeId, line.payoutTzs);
+    if (line.payoutTzs > 0) {
+      await store.adjustWallet(line.userId, line.payoutTzs);
+      await store.createTransaction({
+        userId: line.userId,
+        type: "stake_winnings",
+        description: settlement.voided ? "Stake refunded (void)" : `Winnings · ${outcome}`,
+        amountTzs: line.payoutTzs,
+        provider: "wallet",
+        status: "completed",
+        reference: `MKT_${marketId}_${line.stakeId}`,
+      });
+    }
+  }
+  // Mark losing stakes settled with zero payout.
+  for (const s of stakes) {
+    if (!settlement.lines.some((l) => l.stakeId === s.id)) {
+      await store.settleStake(s.id, 0);
+    }
+  }
+
+  await store.resolveMarketRecord(
+    marketId,
+    settlement.voided ? "void" : "resolved",
+    settlement.voided ? null : outcome,
+    new Date().toISOString(),
+  );
+  return { paidOutTzs: settlement.paidOutTzs, feeTzs: settlement.feeTzs, voided: settlement.voided };
+}
+
+export async function listMarketViews(): Promise<MarketView[]> {
+  const markets = await store.getMarkets();
+  const views: MarketView[] = [];
+  for (const m of markets) {
+    const stakes = await store.getStakesByMarket(m.id);
+    views.push(computeMarketView(m, stakes));
+  }
+  return views;
+}
+
+export interface UserStakeView {
+  stake: MarketStake;
+  market: Market | undefined;
+}
+
+export async function getUserStakeViews(userId: string): Promise<UserStakeView[]> {
+  const stakes = await store.getStakesByUser(userId);
+  const out: UserStakeView[] = [];
+  for (const s of stakes) {
+    out.push({ stake: s, market: await store.getMarketById(s.marketId) });
+  }
+  return out;
 }

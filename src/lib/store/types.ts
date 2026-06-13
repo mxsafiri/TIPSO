@@ -1,4 +1,4 @@
-import type { Subscription, Tip, Transaction, User, WithdrawalRequest } from "../types";
+import type { Market, MarketStake, Subscription, Tip, Transaction, User, WithdrawalRequest } from "../types";
 
 export interface NewTransaction {
   userId: string;
@@ -51,6 +51,16 @@ export interface DataStore {
    * only real, verifiable picks.
    */
   deleteSeedTips(): Promise<void>;
+
+  // Betua-native peer-to-peer markets
+  createMarket(market: Market): Promise<void>;
+  getMarkets(): Promise<Market[]>;
+  getMarketById(id: string): Promise<Market | undefined>;
+  resolveMarketRecord(id: string, status: Market["status"], outcome: Market["outcome"], resolvedAt: string): Promise<void>;
+  createStake(stake: MarketStake): Promise<void>;
+  getStakesByMarket(marketId: string): Promise<MarketStake[]>;
+  getStakesByUser(userId: string): Promise<MarketStake[]>;
+  settleStake(id: string, payoutTzs: number): Promise<void>;
 
   // Webhook audit trail
   recordPaymentEvent(provider: string, eventType: string, payload: unknown): Promise<void>;

@@ -1,6 +1,6 @@
 import { buildSeedTips } from "../seed";
 import { hashPassword, newId } from "../password";
-import type { Subscription, Tip, Transaction, User, WithdrawalRequest } from "../types";
+import type { Market, MarketStake, Subscription, Tip, Transaction, User, WithdrawalRequest } from "../types";
 import type { DataStore, NewTransaction } from "./types";
 
 interface MemoryState {
@@ -9,6 +9,8 @@ interface MemoryState {
   transactions: Transaction[];
   withdrawals: WithdrawalRequest[];
   tips: Tip[];
+  markets: Market[];
+  stakes: MarketStake[];
 }
 
 function createSeedState(): MemoryState {
@@ -70,6 +72,8 @@ function createSeedState(): MemoryState {
     ],
     withdrawals: [],
     tips: buildSeedTips(),
+    markets: [],
+    stakes: [],
   };
 }
 
@@ -201,6 +205,49 @@ export const memoryStore: DataStore = {
   async deleteSeedTips() {
     const s = state();
     s.tips = s.tips.filter((t) => t.id.startsWith("wc_"));
+  },
+
+  async createMarket(market) {
+    state().markets.push(market);
+  },
+
+  async getMarkets() {
+    return [...state().markets].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
+
+  async getMarketById(id) {
+    return state().markets.find((m) => m.id === id);
+  },
+
+  async resolveMarketRecord(id, status, outcome, resolvedAt) {
+    const m = state().markets.find((x) => x.id === id);
+    if (m) {
+      m.status = status;
+      m.outcome = outcome;
+      m.resolvedAt = resolvedAt;
+    }
+  },
+
+  async createStake(stake) {
+    state().stakes.push(stake);
+  },
+
+  async getStakesByMarket(marketId) {
+    return state().stakes.filter((s) => s.marketId === marketId);
+  },
+
+  async getStakesByUser(userId) {
+    return state()
+      .stakes.filter((s) => s.userId === userId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
+
+  async settleStake(id, payoutTzs) {
+    const s = state().stakes.find((x) => x.id === id);
+    if (s) {
+      s.payoutTzs = payoutTzs;
+      s.settled = true;
+    }
   },
 
   async recordPaymentEvent() {

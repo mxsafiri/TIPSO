@@ -74,7 +74,7 @@ async function getTreasuryUserId(): Promise<string> {
   const data = await ntzsFetch("/users", {
     externalId: process.env.NTZS_TREASURY_EXTERNAL_ID ?? TREASURY_EXTERNAL_ID,
     email: process.env.NTZS_TREASURY_EMAIL ?? "treasury@tipso.co.tz",
-    name: "TIPSO Treasury",
+    name: "Betua Treasury",
     phone: "",
   });
   if (typeof data.id !== "string" || !data.id) {

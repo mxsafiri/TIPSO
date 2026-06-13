@@ -196,9 +196,9 @@ function toTip(m: FdMatch, ai?: AIPrediction): Tip | null {
   const settled = m.status === "FINISHED" ? settle(market, m) : null;
 
   const analysis = ai?.analysisEn
-    ?? `TIPSO model pick for ${m.homeTeam.name} vs ${m.awayTeam.name}, FIFA World Cup 2026.`;
+    ?? `Betua model pick for ${m.homeTeam.name} vs ${m.awayTeam.name}, FIFA World Cup 2026.`;
   const analysisSw = ai?.analysisSw
-    ?? `Utabiri wa modeli ya TIPSO kwa ${m.homeTeam.name} dhidi ya ${m.awayTeam.name}, Kombe la Dunia 2026.`;
+    ?? `Utabiri wa modeli ya Betua kwa ${m.homeTeam.name} dhidi ya ${m.awayTeam.name}, Kombe la Dunia 2026.`;
 
   return {
     id: `wc_${m.id}`,

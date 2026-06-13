@@ -10,6 +10,7 @@ export interface NewTransaction {
   status: Transaction["status"];
   reference: string;
   planId?: Transaction["planId"];
+  providerRef?: string;
 }
 
 /**

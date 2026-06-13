@@ -9,9 +9,9 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "TIPSO — Betting Intelligence Platform",
+  title: "Betua — Tips & Prediction Market",
   description:
-    "Verified betting tips with transparent, publicly tracked results. Swahili-first betting intelligence for East Africa.",
+    "Verified tips with transparent, publicly tracked results, plus peer-to-peer prediction markets settled in nTZS. Swahili-first betting intelligence for East Africa.",
 };
 
 export const viewport: Viewport = {

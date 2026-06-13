@@ -239,6 +239,83 @@ export async function ensureGuapUser(externalId: string, name: string, phone: st
   }
 }
 
+/** A user's stake in a market, as shown in their Betua portfolio. */
+export interface GuapPosition {
+  marketId: string;
+  marketTitle: string;
+  side: "YES" | "NO";
+  stakeTzs: number | null;
+  status: "open" | "won" | "lost" | "resolved";
+  payoutTzs: number | null;
+  /** True when there are unredeemed winnings to claim into the wallet. */
+  redeemable: boolean;
+}
+
+function normalizePosition(raw: unknown): GuapPosition | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const o = raw as Raw;
+  const marketId = str(o, ["marketId", "market_id", "id"]);
+  if (!marketId) return null;
+  const sideRaw = (str(o, ["side", "outcome", "position"]) ?? "").toUpperCase();
+  const side: "YES" | "NO" = sideRaw === "NO" ? "NO" : "YES";
+  const statusRaw = (str(o, ["status", "state"]) ?? "open").toLowerCase();
+  const status: GuapPosition["status"] =
+    statusRaw === "won" || statusRaw === "win"
+      ? "won"
+      : statusRaw === "lost" || statusRaw === "lose"
+        ? "lost"
+        : statusRaw === "resolved" || statusRaw === "settled"
+          ? "resolved"
+          : "open";
+  const payoutTzs = num(o, ["payoutTzs", "payout", "winningsTzs", "winnings", "redeemableTzs"]);
+  const alreadyRedeemed = o.redeemed === true || o.claimed === true;
+  return {
+    marketId,
+    marketTitle: str(o, ["marketTitle", "market_title", "title", "question"]) ?? "Market",
+    side,
+    stakeTzs: num(o, ["stakeTzs", "stake", "amountTzs", "amount"]),
+    status,
+    payoutTzs,
+    redeemable: !alreadyRedeemed && (status === "won" || (payoutTzs ?? 0) > 0),
+  };
+}
+
+/** GET /positions — the user's portfolio of stakes. */
+export async function getPositions(externalId: string): Promise<GuapPosition[]> {
+  if (!isGuapConfigured()) return [];
+  try {
+    const { ok, data } = await guapFetch(`/positions?externalId=${encodeURIComponent(externalId)}`);
+    if (!ok) return [];
+    const arr = extractMarketArray(data); // same {data|results|items|positions} unwrapping
+    if (Array.isArray((data as Raw)?.positions)) {
+      return ((data as Raw).positions as unknown[]).map(normalizePosition).filter((p): p is GuapPosition => p !== null);
+    }
+    return arr.map(normalizePosition).filter((p): p is GuapPosition => p !== null);
+  } catch {
+    return [];
+  }
+}
+
+/** POST /positions/redeem — claim winnings from a resolved market. */
+export async function redeemPosition(
+  externalId: string,
+  marketId: string,
+): Promise<{ ok: boolean; payoutTzs: number; error?: string }> {
+  if (!isGuapConfigured()) return { ok: false, payoutTzs: 0, error: "GUAP not configured" };
+  try {
+    const { ok, status, data } = await guapFetch("/positions/redeem", {
+      method: "POST",
+      body: JSON.stringify({ externalId, marketId }),
+    });
+    const o = (data ?? {}) as Raw;
+    if (!ok) return { ok: false, payoutTzs: 0, error: str(o, ["error", "message"]) ?? `Redeem failed (${status})` };
+    const payout = num(o, ["payoutTzs", "payout", "winningsTzs", "winnings", "amountTzs", "amount"]) ?? 0;
+    return { ok: true, payoutTzs: payout };
+  } catch (e) {
+    return { ok: false, payoutTzs: 0, error: e instanceof Error ? e.message : "Redeem error" };
+  }
+}
+
 export interface PlaceTradeInput {
   externalId: string;
   marketId: string;

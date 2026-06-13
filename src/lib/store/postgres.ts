@@ -123,6 +123,8 @@ async function bootstrap(): Promise<void> {
   await sql`ALTER TABLE tips ADD COLUMN IF NOT EXISTS key_factors JSONB`;
   await sql`ALTER TABLE tips ADD COLUMN IF NOT EXISTS key_factors_sw JSONB`;
   await sql`ALTER TABLE tips ADD COLUMN IF NOT EXISTS ai_generated BOOLEAN NOT NULL DEFAULT FALSE`;
+  // Rebrand: migrate the demo account email on databases seeded as TIPSO.
+  await sql`UPDATE users SET email = 'demo@betua.co.tz' WHERE email = 'demo@tipso.co.tz'`;
   await sql`
     CREATE TABLE IF NOT EXISTS payment_events (
       id TEXT PRIMARY KEY,
@@ -154,7 +156,7 @@ async function seedIfEmpty(): Promise<void> {
     expires.setDate(expires.getDate() + 5);
     await sql`
       INSERT INTO users (id, name, email, phone, password_hash, password_salt, wallet_tzs, referral_code)
-      VALUES ('usr_demo', 'John Mbeya', 'demo@tipso.co.tz', '+255 712 345 678',
+      VALUES ('usr_demo', 'John Mbeya', 'demo@betua.co.tz', '+255 712 345 678',
               ${demo.hash}, ${demo.salt}, 45000, 'JOHN255')`;
     await sql`
       INSERT INTO subscriptions (id, user_id, plan_id, started_at, expires_at, active)
@@ -389,10 +391,10 @@ export const postgresStore: DataStore = {
     await ensureReady();
     const full: Transaction = { ...tx, id: newId("txn"), createdAt: new Date().toISOString() };
     await sql`
-      INSERT INTO transactions (id, user_id, type, description, amount_tzs, provider, phone, status, reference, plan_id, created_at)
+      INSERT INTO transactions (id, user_id, type, description, amount_tzs, provider, phone, status, reference, plan_id, provider_ref, created_at)
       VALUES (${full.id}, ${full.userId}, ${full.type}, ${full.description}, ${full.amountTzs},
               ${full.provider}, ${full.phone ?? null}, ${full.status}, ${full.reference},
-              ${full.planId ?? null}, ${full.createdAt})`;
+              ${full.planId ?? null}, ${full.providerRef ?? null}, ${full.createdAt})`;
     return full;
   },
 

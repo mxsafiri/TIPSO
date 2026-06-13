@@ -112,7 +112,7 @@ function LoginForm() {
       </p>
 
       <div className="mt-8 rounded-xl border border-dashed border-app bg-card p-3 text-center text-xs text-secondary">
-        {t("auth.demoHint")}: <strong>demo@tipso.co.tz</strong> / <strong>demo1234</strong>
+        {t("auth.demoHint")}: <strong>demo@betua.co.tz</strong> / <strong>demo1234</strong>
       </div>
     </div>
   );

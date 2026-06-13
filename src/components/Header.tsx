@@ -8,7 +8,7 @@ export default function Header({ right = "bell" }: { right?: "bell" | "settings"
   return (
     <header className="flex items-center justify-between px-5 pb-2 pt-5">
       <span className="w-9" />
-      <Link href="/" aria-label="TIPSO home">
+      <Link href="/" aria-label="Betua home">
         <Logo size={52} />
       </Link>
       {right === "none" ? (

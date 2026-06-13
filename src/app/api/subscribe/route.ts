@@ -52,7 +52,7 @@ export async function POST(req: Request) {
         collection = await getPaymentProvider().collect({
           amountTzs: plan.priceTzs,
           phone,
-          description: `TIPSO ${plan.name}`,
+          description: `Betua ${plan.name}`,
           reference,
         });
       } catch (err) {

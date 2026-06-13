@@ -5,10 +5,10 @@ export default function Logo({ size = 44 }: { size?: number }) {
       style={{ width: size, height: size }}
     >
       <span
-        className="font-bold tracking-wider text-gold-400"
-        style={{ fontSize: size * 0.28 }}
+        className="font-bold tracking-wide text-gold-400"
+        style={{ fontSize: size * 0.3 }}
       >
-        TIPSO
+        Betua
       </span>
     </div>
   );

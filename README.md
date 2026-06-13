@@ -1,11 +1,20 @@
-# TIPSO — Betting Intelligence Platform
+# Betua — Tips & Prediction Market
 
-Verified betting tips with a transparent, publicly tracked record. Swahili-first,
-mobile-money native, built for the East African market starting in Tanzania.
+Betua (working repo name: TIPSO) is a Swahili-first **tips and prediction-market
+platform** for East Africa, built to showcase real utility on the **nTZS
+stablecoin**. It pairs AI-driven betting intelligence with a peer-to-peer
+staking exchange where users stake nTZS against each other.
 
-TIPSO sits **on top of existing bookmakers** — it never handles bets. The product
-sells intelligence: data-backed predictions with confidence scores, a public
-win/loss ledger, and premium subscription tiers paid via mobile money.
+Two sides to the product:
+- **Intelligence** — data- and AI-backed predictions with confidence scores and
+  a transparent, publicly tracked win/loss ledger (sits on top of bookmakers,
+  never handles bets); premium tiers paid via mobile money.
+- **Exchange** — native peer-to-peer prediction markets settled in nTZS: stake
+  YES/NO from your wallet, hold positions, redeem winnings. Built on the GUAP
+  staking rails with Betua as the front-end.
+
+> The user-facing brand is **Betua**; internal identifiers (env vars, cookies,
+> package name) remain `tipso`/`TIPSO` to avoid config churn.
 
 ## Features (MVP)
 

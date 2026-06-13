@@ -50,7 +50,7 @@ export async function POST(req: Request) {
       collection = await getPaymentProvider().collect({
         amountTzs,
         phone,
-        description: "TIPSO wallet top-up",
+        description: "Betua wallet top-up",
         reference,
       });
     } catch (err) {

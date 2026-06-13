@@ -66,10 +66,10 @@ export interface Subscription {
 export interface Transaction {
   id: string;
   userId: string;
-  type: "subscription" | "wallet_topup" | "referral_bonus";
+  type: "subscription" | "wallet_topup" | "referral_bonus" | "stake" | "stake_winnings";
   description: string;
   amountTzs: number;
-  provider: PaymentProvider | "wallet" | "ntzs";
+  provider: PaymentProvider | "wallet" | "ntzs" | "guap";
   phone?: string;
   status: "pending" | "completed" | "failed";
   reference: string;

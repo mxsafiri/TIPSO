@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { MARKET_KEYS, isMarketKey, type MarketKey } from "../markets";
 
 /**
- * TIPSO Prediction Intelligence engine.
+ * Betua Prediction Intelligence engine.
  *
  * Claude Opus 4.8 acts as the reasoning + analysis layer on top of structured
  * match facts: it selects the sharpest settleable market, calibrates a
@@ -51,7 +51,7 @@ function getClient(): Anthropic {
   return client;
 }
 
-const SYSTEM_PROMPT = `You are the prediction intelligence engine behind TIPSO — a premium, Swahili-first betting intelligence platform for East Africa. Punters pay for your edge, so every selection must read like the work of a sharp, disciplined analyst, not a generic bot.
+const SYSTEM_PROMPT = `You are the prediction intelligence engine behind Betua — a premium, Swahili-first tips and prediction-market platform for East Africa. Punters pay for your edge, so every selection must read like the work of a sharp, disciplined analyst, not a generic bot.
 
 Your job for each fixture: choose the single most defensible betting market, set a calibrated confidence, estimate fair odds, and write tight, specific analysis in both English and Swahili.
 
@@ -68,7 +68,7 @@ You must respond by calling submit_predictions exactly once, with one entry per 
 
 const PREDICTION_TOOL: Anthropic.Tool = {
   name: "submit_predictions",
-  description: "Submit the TIPSO prediction for every fixture provided, in the same order.",
+  description: "Submit the Betua prediction for every fixture provided, in the same order.",
   input_schema: {
     type: "object",
     additionalProperties: false,
@@ -197,7 +197,7 @@ export async function generatePredictions(
         messages: [
           {
             role: "user",
-            content: `Produce TIPSO predictions for these ${fixtures.length} fixture(s). Return one entry per fixture, keyed by matchId.\n\n${JSON.stringify(fixtures, null, 2)}`,
+            content: `Produce Betua predictions for these ${fixtures.length} fixture(s). Return one entry per fixture, keyed by matchId.\n\n${JSON.stringify(fixtures, null, 2)}`,
           },
         ],
       },

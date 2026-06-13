@@ -22,7 +22,7 @@ function createSeedState(): MemoryState {
   const demoUser: User = {
     id: "usr_demo",
     name: "John Mbeya",
-    email: "demo@tipso.co.tz",
+    email: "demo@betua.co.tz",
     phone: "+255 712 345 678",
     passwordHash: demoPassword.hash,
     passwordSalt: demoPassword.salt,

@@ -134,8 +134,8 @@ function buildHistory(): Tip[] {
             : lost
               ? "1-2"
               : "2-0",
-      analysis: "Settled tip from the public TIPSO track record.",
-      analysisSw: "Tip iliyokamilika kutoka kwenye rekodi ya wazi ya TIPSO.",
+      analysis: "Settled tip from the public Betua track record.",
+      analysisSw: "Tip iliyokamilika kutoka kwenye rekodi ya wazi ya Betua.",
     });
   }
   return tips;

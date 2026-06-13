@@ -174,6 +174,15 @@ export function FlameIcon({ className }: IconProps) {
   );
 }
 
+export function SparkIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2.5l1.8 4.9a4 4 0 0 0 2.8 2.8L21.5 12l-4.9 1.8a4 4 0 0 0-2.8 2.8L12 21.5l-1.8-4.9a4 4 0 0 0-2.8-2.8L2.5 12l4.9-1.8a4 4 0 0 0 2.8-2.8L12 2.5Z" />
+      <path d="M19 3.5l.7 1.9 1.9.7-1.9.7L19 8.7l-.7-1.9-1.9-.7 1.9-.7L19 3.5Z" opacity="0.7" />
+    </svg>
+  );
+}
+
 export function ShieldCheckIcon({ className }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

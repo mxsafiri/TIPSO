@@ -29,6 +29,13 @@ export interface Tip {
   live?: { minute: number; homeScore: number; awayScore: number };
   analysis: string;
   analysisSw: string;
+  /** Canonical market key (for mechanical settlement of fixture-fed tips). */
+  market?: string;
+  /** Short bullet drivers behind the pick (TIPSO Intelligence). */
+  keyFactors?: string[];
+  keyFactorsSw?: string[];
+  /** True when the pick + analysis came from the AI prediction engine. */
+  aiGenerated?: boolean;
 }
 
 export type PlanId = "daily" | "weekly" | "vip";

@@ -19,5 +19,7 @@ export function toTipDto(tip: Tip, hasPremium: boolean): TipDto {
     predictionSw: "",
     analysis: "",
     analysisSw: "",
+    keyFactors: undefined,
+    keyFactorsSw: undefined,
   };
 }

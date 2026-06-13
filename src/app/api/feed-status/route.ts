@@ -25,10 +25,21 @@ export async function GET() {
     );
   }
 
+  let aiTips = 0;
+  try {
+    aiTips = (await store.getAllTips()).filter((t) => t.aiGenerated).length;
+  } catch {
+    aiTips = 0;
+  }
+
   return NextResponse.json({
     feed: diag,
     worldCupTipsInDb,
     pendingWcTips,
+    aiGeneratedTips: aiTips,
+    aiEngine: diag.aiConfigured
+      ? "Claude Opus 4.8 prediction engine active"
+      : "ANTHROPIC_API_KEY not set — using strength-model fallback",
     hint: !diag.keyPresent
       ? "FOOTBALL_DATA_API_KEY is not set in this deployment — add it in Vercel and redeploy."
       : diag.error

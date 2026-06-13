@@ -112,8 +112,17 @@ async function bootstrap(): Promise<void> {
       live_home_score INTEGER,
       live_away_score INTEGER,
       analysis TEXT NOT NULL DEFAULT '',
-      analysis_sw TEXT NOT NULL DEFAULT ''
+      analysis_sw TEXT NOT NULL DEFAULT '',
+      market TEXT,
+      key_factors JSONB,
+      key_factors_sw JSONB,
+      ai_generated BOOLEAN NOT NULL DEFAULT FALSE
     )`;
+  // Migrations for databases created before the AI prediction engine.
+  await sql`ALTER TABLE tips ADD COLUMN IF NOT EXISTS market TEXT`;
+  await sql`ALTER TABLE tips ADD COLUMN IF NOT EXISTS key_factors JSONB`;
+  await sql`ALTER TABLE tips ADD COLUMN IF NOT EXISTS key_factors_sw JSONB`;
+  await sql`ALTER TABLE tips ADD COLUMN IF NOT EXISTS ai_generated BOOLEAN NOT NULL DEFAULT FALSE`;
   await sql`
     CREATE TABLE IF NOT EXISTS payment_events (
       id TEXT PRIMARY KEY,
@@ -193,12 +202,15 @@ async function insertTips(tips: Tip[]): Promise<void> {
     await sql`
       INSERT INTO tips (id, sport, league, home, away, home_code, away_code, home_color, away_color,
                         kickoff, prediction, prediction_sw, odds, confidence, is_premium, is_hot_pick,
-                        status, result, live_minute, live_home_score, live_away_score, analysis, analysis_sw)
+                        status, result, live_minute, live_home_score, live_away_score, analysis, analysis_sw,
+                        market, key_factors, key_factors_sw, ai_generated)
       VALUES (${t.id}, ${t.sport}, ${t.league}, ${t.home}, ${t.away}, ${t.homeCode}, ${t.awayCode},
               ${t.homeColor}, ${t.awayColor}, ${t.kickoff}, ${t.prediction}, ${t.predictionSw},
               ${t.odds}, ${t.confidence}, ${t.isPremium}, ${t.isHotPick}, ${t.status},
               ${t.result ?? null}, ${t.live?.minute ?? null}, ${t.live?.homeScore ?? null},
-              ${t.live?.awayScore ?? null}, ${t.analysis}, ${t.analysisSw})
+              ${t.live?.awayScore ?? null}, ${t.analysis}, ${t.analysisSw},
+              ${t.market ?? null}, ${JSON.stringify(t.keyFactors ?? null)}::jsonb,
+              ${JSON.stringify(t.keyFactorsSw ?? null)}::jsonb, ${t.aiGenerated ?? false})
       ON CONFLICT (id) DO NOTHING`;
   }
 }
@@ -283,7 +295,26 @@ function mapTip(r: Row): Tip {
         : undefined,
     analysis: r.analysis as string,
     analysisSw: r.analysis_sw as string,
+    market: (r.market as string | null) ?? undefined,
+    keyFactors: parseStringArray(r.key_factors),
+    keyFactorsSw: parseStringArray(r.key_factors_sw),
+    aiGenerated: Boolean(r.ai_generated),
   };
+}
+
+/** JSONB columns arrive parsed from the Neon driver; tolerate string too. */
+function parseStringArray(value: unknown): string[] | undefined {
+  let v = value;
+  if (typeof v === "string") {
+    try {
+      v = JSON.parse(v);
+    } catch {
+      return undefined;
+    }
+  }
+  if (!Array.isArray(v)) return undefined;
+  const arr = v.filter((x): x is string => typeof x === "string");
+  return arr.length > 0 ? arr : undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -432,14 +463,16 @@ export const postgresStore: DataStore = {
       await sql`
         INSERT INTO tips (id, sport, league, home, away, home_code, away_code, home_color, away_color,
                           kickoff, prediction, prediction_sw, odds, confidence, is_premium, is_hot_pick,
-                          status, result, live_minute, live_home_score, live_away_score, analysis, analysis_sw)
+                          status, result, live_minute, live_home_score, live_away_score, analysis, analysis_sw,
+                          market, key_factors, key_factors_sw, ai_generated)
         VALUES (${t.id}, ${t.sport}, ${t.league}, ${t.home}, ${t.away}, ${t.homeCode}, ${t.awayCode},
                 ${t.homeColor}, ${t.awayColor}, ${t.kickoff}, ${t.prediction}, ${t.predictionSw},
                 ${t.odds}, ${t.confidence}, ${t.isPremium}, ${t.isHotPick}, ${t.status},
                 ${t.result ?? null}, ${t.live?.minute ?? null}, ${t.live?.homeScore ?? null},
-                ${t.live?.awayScore ?? null}, ${t.analysis}, ${t.analysisSw})
+                ${t.live?.awayScore ?? null}, ${t.analysis}, ${t.analysisSw},
+                ${t.market ?? null}, ${JSON.stringify(t.keyFactors ?? null)}::jsonb,
+                ${JSON.stringify(t.keyFactorsSw ?? null)}::jsonb, ${t.aiGenerated ?? false})
         ON CONFLICT (id) DO UPDATE SET
-          kickoff = EXCLUDED.kickoff,
           status = EXCLUDED.status,
           result = EXCLUDED.result,
           is_hot_pick = EXCLUDED.is_hot_pick,

@@ -1,14 +1,23 @@
 import type { Tip } from "../types";
 import type { DataStore } from "../store/types";
+import { MARKETS, clampOdds, isMarketKey, type MarketKey } from "../markets";
+import {
+  generatePredictions,
+  isAiConfigured,
+  type AIPrediction,
+  type MatchContext,
+} from "../ai/tipster";
 
 /**
  * FIFA World Cup 2026 live fixtures via football-data.org (free tier includes
  * the World Cup). Requires FOOTBALL_DATA_API_KEY; without it this module is a
  * no-op and the app keeps running on its seeded fixtures.
  *
- * Each fixture becomes a TIPSO tip with a deterministic, strength-model
- * prediction. Finished matches are settled automatically (won/lost + result),
- * feeding the public transparency ledger with real outcomes.
+ * Each new fixture becomes a TIPSO tip. When ANTHROPIC_API_KEY is set, the AI
+ * prediction engine (Claude Opus 4.8) selects the market, calibrates confidence
+ * and writes bilingual analysis; otherwise the deterministic strength model is
+ * used. Either way the pick is frozen on first insert and finished matches are
+ * settled mechanically (won/lost + result) into the public ledger.
  */
 
 const SYNC_INTERVAL_MS = 30 * 60 * 1000;
@@ -36,6 +45,9 @@ export interface FeedDiagnostics {
   tipsUpserted: number | null;
   requestsAvailable: string | null;
   error: string | null;
+  aiConfigured: boolean;
+  aiNewFixtures: number | null;
+  aiPredictions: number | null;
 }
 
 let lastDiag: FeedDiagnostics = {
@@ -46,10 +58,17 @@ let lastDiag: FeedDiagnostics = {
   tipsUpserted: null,
   requestsAvailable: null,
   error: null,
+  aiConfigured: false,
+  aiNewFixtures: null,
+  aiPredictions: null,
 };
 
 export function getFeedDiagnostics(): FeedDiagnostics {
-  return { ...lastDiag, keyPresent: Boolean(process.env.FOOTBALL_DATA_API_KEY) };
+  return {
+    ...lastDiag,
+    keyPresent: Boolean(process.env.FOOTBALL_DATA_API_KEY),
+    aiConfigured: isAiConfigured(),
+  };
 }
 
 interface FdTeam {
@@ -103,93 +122,47 @@ function strength(tla: string): number {
 }
 
 interface Pick {
-  prediction: string;
-  predictionSw: string;
+  market: MarketKey;
   odds: number;
   confidence: number;
 }
 
-/** Deterministic per-match prediction from the strength model. */
+/** Deterministic strength-model pick — the fallback when AI is unavailable. */
 function makePick(m: FdMatch): Pick {
   const homeTla = m.homeTeam.tla ?? "???";
   const awayTla = m.awayTeam.tla ?? "???";
-  const home = m.homeTeam.shortName ?? m.homeTeam.name;
-  const away = m.awayTeam.shortName ?? m.awayTeam.name;
   const diff = strength(homeTla) - strength(awayTla);
   const jitter = (m.id % 7) - 3; // ±3 deterministic variety per fixture
+  const combined = strength(homeTla) + strength(awayTla);
 
   if (diff >= 9) {
-    const conf = Math.min(84, 72 + Math.floor(diff / 3) + jitter);
-    return {
-      prediction: `${home} Win`,
-      predictionSw: `${home} Kushinda`,
-      odds: round2(1.25 + Math.max(0, 30 - diff) * 0.02),
-      confidence: conf,
-    };
+    return { market: "home_win", odds: round2(1.25 + Math.max(0, 30 - diff) * 0.02), confidence: Math.min(84, 72 + Math.floor(diff / 3) + jitter) };
   }
   if (diff <= -9) {
-    const conf = Math.min(84, 72 + Math.floor(-diff / 3) + jitter);
-    return {
-      prediction: `${away} Win`,
-      predictionSw: `${away} Kushinda`,
-      odds: round2(1.35 + Math.max(0, 30 + diff) * 0.02),
-      confidence: conf,
-    };
+    return { market: "away_win", odds: round2(1.35 + Math.max(0, 30 + diff) * 0.02), confidence: Math.min(84, 72 + Math.floor(-diff / 3) + jitter) };
   }
   if (diff >= 4) {
-    return {
-      prediction: `Draw or ${home}`,
-      predictionSw: `Sare au ${home}`,
-      odds: round2(1.3 + (9 - diff) * 0.02),
-      confidence: 68 + jitter,
-    };
+    return { market: "draw_or_home", odds: round2(1.3 + (9 - diff) * 0.02), confidence: 68 + jitter };
   }
   if (diff <= -4) {
-    return {
-      prediction: `Draw or ${away}`,
-      predictionSw: `Sare au ${away}`,
-      odds: round2(1.32 + (9 + diff) * 0.02),
-      confidence: 68 + jitter,
-    };
+    return { market: "draw_or_away", odds: round2(1.32 + (9 + diff) * 0.02), confidence: 68 + jitter };
   }
-  const combined = strength(homeTla) + strength(awayTla);
   if (combined >= 168) {
-    return {
-      prediction: "Over 1.5 Goals",
-      predictionSw: "Zaidi ya Magoli 1.5",
-      odds: round2(1.4 + (m.id % 5) * 0.04),
-      confidence: 66 + jitter,
-    };
+    return { market: "over_1_5", odds: round2(1.4 + (m.id % 5) * 0.04), confidence: 66 + jitter };
   }
-  return {
-    prediction: "Both Teams to Score",
-    predictionSw: "Timu Zote Kufunga",
-    odds: round2(1.65 + (m.id % 5) * 0.05),
-    confidence: 62 + jitter,
-  };
+  return { market: "btts", odds: round2(1.65 + (m.id % 5) * 0.05), confidence: 62 + jitter };
 }
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-function settle(pick: Pick, m: FdMatch): { status: "won" | "lost"; result: string } | null {
+/** Mechanical settlement: grade the chosen market against the full-time score. */
+function settle(market: MarketKey, m: FdMatch): { status: "won" | "lost"; result: string } | null {
   const ft = m.score.fullTime;
   if (ft.home == null || ft.away == null) return null;
-  const total = ft.home + ft.away;
   const result = `${ft.home}-${ft.away}`;
-  const home = m.homeTeam.shortName ?? m.homeTeam.name;
-  const away = m.awayTeam.shortName ?? m.awayTeam.name;
-
-  let won: boolean;
-  if (pick.prediction === `${home} Win`) won = m.score.winner === "HOME_TEAM";
-  else if (pick.prediction === `${away} Win`) won = m.score.winner === "AWAY_TEAM";
-  else if (pick.prediction === `Draw or ${home}`) won = m.score.winner !== "AWAY_TEAM";
-  else if (pick.prediction === `Draw or ${away}`) won = m.score.winner !== "HOME_TEAM";
-  else if (pick.prediction === "Over 1.5 Goals") won = total > 1.5;
-  else if (pick.prediction === "Both Teams to Score") won = ft.home > 0 && ft.away > 0;
-  else return null;
-
+  const won = MARKETS[market].settle(ft.home, ft.away);
   return { status: won ? "won" : "lost", result };
 }
 
@@ -206,33 +179,47 @@ function liveMinute(m: FdMatch): number {
   return Math.max(1, Math.min(90, minute));
 }
 
-function toTip(m: FdMatch): Tip | null {
+function toTip(m: FdMatch, ai?: AIPrediction): Tip | null {
   const homeTla = m.homeTeam.tla ?? "";
   const awayTla = m.awayTeam.tla ?? "";
   if (!homeTla || !awayTla) return null;
-  const pick = makePick(m);
+  const home = m.homeTeam.shortName ?? m.homeTeam.name;
+  const away = m.awayTeam.shortName ?? m.awayTeam.name;
+
+  const fallback = makePick(m);
+  const market = ai?.market ?? fallback.market;
+  const def = MARKETS[market];
+  const confidence = ai?.confidence ?? fallback.confidence;
+  const odds = ai ? clampOdds(market, ai.fairOdds) : fallback.odds;
+
   const live = m.status === "IN_PLAY" || m.status === "PAUSED";
-  const settled = m.status === "FINISHED" ? settle(pick, m) : null;
+  const settled = m.status === "FINISHED" ? settle(market, m) : null;
+
+  const analysis = ai?.analysisEn
+    ?? `TIPSO model pick for ${m.homeTeam.name} vs ${m.awayTeam.name}, FIFA World Cup 2026.`;
+  const analysisSw = ai?.analysisSw
+    ?? `Utabiri wa modeli ya TIPSO kwa ${m.homeTeam.name} dhidi ya ${m.awayTeam.name}, Kombe la Dunia 2026.`;
 
   return {
     id: `wc_${m.id}`,
     sport: "football",
     league: "FIFA World Cup 2026",
-    home: m.homeTeam.shortName ?? m.homeTeam.name,
-    away: m.awayTeam.shortName ?? m.awayTeam.name,
+    home,
+    away,
     homeCode: homeTla,
     awayCode: awayTla,
     homeColor: TEAM_COLORS[homeTla] ?? "#1B2440",
     awayColor: TEAM_COLORS[awayTla] ?? "#B8890F",
     kickoff: m.utcDate,
-    prediction: pick.prediction,
-    predictionSw: pick.predictionSw,
-    odds: pick.odds,
-    confidence: pick.confidence,
-    isPremium: pick.confidence >= 76,
-    isHotPick: pick.confidence >= 72 && !settled,
+    prediction: def.labelEn(home, away),
+    predictionSw: def.labelSw(home, away),
+    odds,
+    confidence,
+    isPremium: confidence >= 76,
+    isHotPick: confidence >= 72 && !settled,
     status: settled?.status ?? "pending",
     result: settled?.result,
+    market,
     live: live
       ? {
           minute: liveMinute(m),
@@ -240,8 +227,48 @@ function toTip(m: FdMatch): Tip | null {
           awayScore: m.score.fullTime.away ?? m.score.halfTime.away ?? 0,
         }
       : undefined,
-    analysis: `TIPSO model pick for ${m.homeTeam.name} vs ${m.awayTeam.name}, FIFA World Cup 2026.`,
-    analysisSw: `Utabiri wa modeli ya TIPSO kwa ${m.homeTeam.name} dhidi ya ${m.awayTeam.name}, Kombe la Dunia 2026.`,
+    analysis,
+    analysisSw,
+    keyFactors: ai?.keyFactorsEn,
+    keyFactorsSw: ai?.keyFactorsSw,
+    aiGenerated: Boolean(ai),
+  };
+}
+
+function buildContext(m: FdMatch): MatchContext {
+  return {
+    matchId: `wc_${m.id}`,
+    competition: "FIFA World Cup 2026",
+    stage: m.stage,
+    home: m.homeTeam.shortName ?? m.homeTeam.name,
+    away: m.awayTeam.shortName ?? m.awayTeam.name,
+    homeStrength: strength(m.homeTeam.tla ?? ""),
+    awayStrength: strength(m.awayTeam.tla ?? ""),
+    kickoffIso: m.utcDate,
+  };
+}
+
+/**
+ * Refresh an already-stored tip: update only live state and settlement, using
+ * the tip's FROZEN market — never re-pick. The pick and analysis are immutable
+ * once published, which is what keeps the public ledger tamper-proof.
+ */
+function refreshTip(m: FdMatch, existing: Tip): Tip {
+  const market: MarketKey = isMarketKey(existing.market) ? existing.market : makePick(m).market;
+  const live = m.status === "IN_PLAY" || m.status === "PAUSED";
+  const settled = m.status === "FINISHED" ? settle(market, m) : null;
+  return {
+    ...existing,
+    status: settled?.status ?? existing.status,
+    result: settled?.result ?? existing.result,
+    isHotPick: existing.isHotPick && !settled,
+    live: live
+      ? {
+          minute: liveMinute(m),
+          homeScore: m.score.fullTime.home ?? m.score.halfTime.home ?? 0,
+          awayScore: m.score.fullTime.away ?? m.score.halfTime.away ?? 0,
+        }
+      : undefined,
   };
 }
 
@@ -264,6 +291,9 @@ export async function syncWorldCupTips(store: DataStore, force = false): Promise
     tipsUpserted: null,
     requestsAvailable: null,
     error: null,
+    aiConfigured: isAiConfigured(),
+    aiNewFixtures: null,
+    aiPredictions: null,
   };
 
   try {
@@ -285,8 +315,31 @@ export async function syncWorldCupTips(store: DataStore, force = false): Promise
     }
     const data = (await res.json()) as { matches?: FdMatch[] };
     const matches = data.matches ?? [];
-    const tips = matches.map(toTip).filter((t): t is Tip => t !== null);
     lastDiag.matchesFromApi = matches.length;
+
+    const existing = await store.getAllTips();
+    const existingById = new Map(existing.map((t) => [t.id, t] as const));
+
+    // New fixtures get a fresh pick; existing ones are only re-settled.
+    const playable = matches.filter((m) => m.homeTeam.tla && m.awayTeam.tla);
+    const newMatches = playable.filter((m) => !existingById.has(`wc_${m.id}`));
+    lastDiag.aiNewFixtures = newMatches.length;
+
+    // Run the AI prediction engine on new fixtures (batched). Falls back to the
+    // strength model for any fixture the AI doesn't return.
+    let aiMap = new Map<string, AIPrediction>();
+    if (isAiConfigured() && newMatches.length > 0) {
+      aiMap = await generatePredictions(newMatches.map(buildContext));
+      lastDiag.aiPredictions = aiMap.size;
+    }
+
+    const tips = matches
+      .map((m) => {
+        const stored = existingById.get(`wc_${m.id}`);
+        return stored ? refreshTip(m, stored) : toTip(m, aiMap.get(`wc_${m.id}`));
+      })
+      .filter((t): t is Tip => t !== null);
+
     if (tips.length > 0) {
       await store.upsertTips(tips);
       // Real fixtures are flowing — retire all demo/seed data.

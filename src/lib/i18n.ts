@@ -38,6 +38,11 @@ const dict = {
   "tips.unlock": { en: "Unlock", sw: "Fungua" },
   "tips.today": { en: "Today", sw: "Leo" },
   "tips.tomorrow": { en: "Tomorrow", sw: "Kesho" },
+  "tips.intelligence": { en: "TIPSO Intelligence", sw: "Uchambuzi wa TIPSO" },
+  "tips.whyThisPick": { en: "Why this pick", sw: "Kwa nini chaguo hili" },
+  "tips.keyFactors": { en: "Key factors", sw: "Sababu kuu" },
+  "tips.aiPowered": { en: "AI-Powered", sw: "Inatumia AI" },
+  "tips.hideAnalysis": { en: "Hide analysis", sw: "Ficha uchambuzi" },
 
   // Live
   "live.title": { en: "Live Now", sw: "Inaendelea Sasa" },

@@ -93,7 +93,7 @@ by the treasury:
 | --- | --- | --- |
 | Database | Neon Postgres, self-bootstrapping schema | Managed migrations as schema stabilises |
 | Payments | nTZS treasury adapter + instant simulator fallback | Finalise adapter against nTZS API spec + sandbox |
-| Tips feed | Seed fixtures (`src/lib/seed.ts`) | Admin console + odds-feed ingestion + ML scoring |
+| Tips engine | Claude Opus 4.8 picks + bilingual analysis (`src/lib/ai/tipster.ts`), strength-model fallback | Add real bookmaker odds + trained model on the settled ledger |
 | Live scores | Seeded live state | Sports data API (e.g. API-Football) |
 | Auth | Email + password | Add phone OTP (primary channel in TZ) |
 

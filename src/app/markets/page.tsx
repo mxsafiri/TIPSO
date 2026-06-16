@@ -272,8 +272,25 @@ export default function MarketsPage() {
 }
 
 // ---------------------------------------------------------------------------
-// GUAP market card
+// GUAP market card — Polymarket-informed design
 // ---------------------------------------------------------------------------
+
+function volLabel(tzs: number | null): string | null {
+  if (!tzs) return null;
+  if (tzs >= 1_000_000) return `TZS ${(tzs / 1_000_000).toFixed(1)}M Vol.`;
+  if (tzs >= 1_000) return `TZS ${(tzs / 1_000).toFixed(0)}K Vol.`;
+  return `TZS ${tzs.toLocaleString()} Vol.`;
+}
+
+function timeRemaining(iso: string | null): string {
+  if (!iso) return "";
+  const ms = new Date(iso).getTime() - Date.now();
+  if (ms < 0) return "Ended";
+  const h = Math.floor(ms / 3_600_000);
+  if (h < 24) return `${h}h remaining`;
+  const d = Math.floor(h / 24);
+  return `${d}d remaining`;
+}
 
 function GuapMarketCard({
   market,
@@ -285,67 +302,116 @@ function GuapMarketCard({
   onStake: (side: Side) => void;
 }) {
   const isOpen = market.status === "OPEN" || market.status === "unknown";
+  const yes = market.yesPercent ?? 50;
+  const no = market.noPercent ?? 50;
 
   return (
     <div
-      className="anim-fade-up rounded-[20px] p-4"
+      className="anim-fade-up overflow-hidden rounded-[20px]"
       style={{
         animationDelay: `${Math.min(index, 8) * 60}ms`,
         background: "var(--bg-card)",
-        boxShadow: "0 0 0 1px var(--border-ring), 0 2px 12px rgba(0,0,0,0.1)",
+        boxShadow: "0 0 0 1px var(--border-ring), 0 4px 20px rgba(0,0,0,0.15)",
       }}
     >
-      <div className="flex items-center justify-between text-[10px] uppercase tracking-wide">
+      {/* ── Header: category · time ── */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-0">
         <div className="flex items-center gap-1.5">
-          <SparkIcon className="h-3 w-3 text-gold" />
-          <span className="font-semibold text-gold">{market.category}</span>
+          <SparkIcon className="h-3 w-3 text-gold/70" />
+          <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-gold/80">
+            {market.category}
+          </span>
         </div>
-        <span className="text-secondary">
-          {market.closesAt ? `Closes ${whenLabel(market.closesAt)}` : market.status}
-        </span>
+        {market.closesAt && (
+          <span className="text-[10px] text-secondary/60">{timeRemaining(market.closesAt)}</span>
+        )}
       </div>
 
-      <h2 className="mt-2 text-sm font-bold leading-snug">{market.title}</h2>
+      {/* ── Title ── */}
+      <h2 className="mt-2.5 px-4 text-[14px] font-bold leading-snug text-primary">
+        {market.title}
+      </h2>
 
-      {market.description && (
-        <p className="mt-1 line-clamp-2 text-[11px] text-secondary">{market.description}</p>
-      )}
-
-      {market.poolTzs !== null && (
-        <div className="mt-1 text-[11px] text-secondary">
-          Pool: <strong className="text-primary">{formatTzs(market.poolTzs)}</strong>
-        </div>
-      )}
-
+      {/* ── Probability hero ── */}
       {isOpen ? (
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => onStake("YES")}
-            className="press rounded-xl border border-win/30 bg-win/10 px-3 py-2.5 text-center transition-colors hover:bg-win/20"
-          >
-            <div className="text-[10px] font-bold uppercase tracking-wide text-win">YES</div>
-            <div className="mt-0.5 text-lg font-extrabold text-win">
-              {market.yesPercent !== null ? `${market.yesPercent}%` : "—"}
+        <>
+          <div className="mt-4 grid grid-cols-2 divide-x" style={{ borderColor: "var(--border)" }}>
+            {/* YES side */}
+            <div className="flex flex-col items-center gap-0.5 pb-3 pt-2">
+              <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-win/70">
+                YES
+              </span>
+              <span className="text-[32px] font-black leading-none tabular-nums text-win">
+                {yes}%
+              </span>
+              <span className="text-[10px] text-secondary/50">chance</span>
             </div>
-          </button>
-          <button
-            type="button"
-            onClick={() => onStake("NO")}
-            className="press rounded-xl border border-loss/30 bg-loss/10 px-3 py-2.5 text-center transition-colors hover:bg-loss/20"
-          >
-            <div className="text-[10px] font-bold uppercase tracking-wide text-loss">NO</div>
-            <div className="mt-0.5 text-lg font-extrabold text-loss">
-              {market.noPercent !== null ? `${market.noPercent}%` : "—"}
+            {/* NO side */}
+            <div className="flex flex-col items-center gap-0.5 pb-3 pt-2">
+              <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-loss/70">
+                NO
+              </span>
+              <span className="text-[32px] font-black leading-none tabular-nums text-loss">
+                {no}%
+              </span>
+              <span className="text-[10px] text-secondary/50">chance</span>
             </div>
-          </button>
-        </div>
+          </div>
+
+          {/* Probability bar */}
+          <div className="mx-4 h-1 overflow-hidden rounded-full" style={{ background: "var(--bg-inset)" }}>
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-win to-win/60"
+              style={{ width: `${yes}%` }}
+            />
+          </div>
+
+          {/* Action buttons */}
+          <div className="grid grid-cols-2 gap-2 p-3">
+            <button
+              type="button"
+              onClick={() => onStake("YES")}
+              className="press rounded-xl py-2.5 text-sm font-extrabold text-win transition-all"
+              style={{
+                background: "rgba(34,197,94,0.1)",
+                boxShadow: "inset 0 0 0 1px rgba(34,197,94,0.2)",
+              }}
+            >
+              Buy YES
+            </button>
+            <button
+              type="button"
+              onClick={() => onStake("NO")}
+              className="press rounded-xl py-2.5 text-sm font-extrabold text-loss transition-all"
+              style={{
+                background: "rgba(239,68,68,0.1)",
+                boxShadow: "inset 0 0 0 1px rgba(239,68,68,0.2)",
+              }}
+            >
+              Buy NO
+            </button>
+          </div>
+        </>
       ) : (
+        <div className="mx-4 mt-3 mb-4 rounded-xl px-3 py-2.5 text-xs font-semibold text-secondary" style={{ background: "var(--bg-inset)" }}>
+          Market resolved
+        </div>
+      )}
+
+      {/* ── Footer: volume ── */}
+      {market.poolTzs !== null && (
         <div
-          className="mt-3 rounded-xl px-3 py-2 text-xs font-semibold text-secondary"
-          style={{ background: "var(--bg-inset)" }}
+          className="flex items-center justify-between border-t px-4 py-2.5"
+          style={{ borderColor: "var(--border-ring)" }}
         >
-          Resolved
+          <span className="text-[11px] font-semibold text-secondary/60">
+            {volLabel(market.poolTzs)}
+          </span>
+          {market.closesAt && (
+            <span className="text-[10px] text-secondary/40">
+              Ends {whenLabel(market.closesAt)}
+            </span>
+          )}
         </div>
       )}
     </div>
@@ -373,84 +439,107 @@ function NativeMarketCard({
   const now = Date.now();
   const open = market.status === "open" && new Date(market.closesAt).getTime() > now;
   const closedUnresolved = market.status === "open" && new Date(market.closesAt).getTime() <= now;
+  const yes = market.yesPercent ?? 50;
+  const no = market.noPercent ?? 50;
 
   return (
     <div
-      className="anim-fade-up rounded-[20px] p-4"
+      className="anim-fade-up overflow-hidden rounded-[20px]"
       style={{
         animationDelay: `${Math.min(index, 8) * 60}ms`,
         background: "var(--bg-card)",
-        boxShadow: "0 0 0 1px var(--border-ring)",
+        boxShadow: "0 0 0 1px var(--border-ring), 0 4px 20px rgba(0,0,0,0.12)",
       }}
     >
-      <div className="flex items-center justify-between text-[10px] uppercase tracking-wide">
-        <span className="font-semibold text-gold">{market.category}</span>
-        <span className="text-secondary">
-          {open ? `${t("markets.closes")} ${whenLabel(market.closesAt)}` : t("markets.closed")}
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 pt-4">
+        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-gold/80">
+          {market.category}
+        </span>
+        <span className="text-[10px] text-secondary/60">
+          {open ? timeRemaining(market.closesAt) : t("markets.closed")}
         </span>
       </div>
 
-      <h2 className="mt-2 text-sm font-bold leading-snug">{market.question}</h2>
-      <div className="mt-1 text-[11px] text-secondary">
-        {t("markets.by")} {market.creatorName} · {market.stakerCount}{" "}
-        {t("markets.players")} · {t("markets.pool")} {formatTzs(market.totalPoolTzs)}
-      </div>
+      {/* Title */}
+      <h2 className="mt-2.5 px-4 text-[14px] font-bold leading-snug text-primary">
+        {market.question}
+      </h2>
+      <p className="mt-1 px-4 text-[11px] text-secondary/60">
+        {t("markets.by")} {market.creatorName} · {market.stakerCount} {t("markets.players")}
+      </p>
 
       {open ? (
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => onStake("YES")}
-            className="press rounded-xl border border-win/30 bg-win/10 px-3 py-2 text-center"
-          >
-            <div className="text-[10px] font-bold uppercase tracking-wide text-win">
-              {t("markets.yes")}
+        <>
+          {/* Probability hero */}
+          <div className="mt-4 grid grid-cols-2 divide-x" style={{ borderColor: "var(--border)" }}>
+            <div className="flex flex-col items-center gap-0.5 pb-3 pt-2">
+              <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-win/70">YES</span>
+              <span className="text-[32px] font-black leading-none tabular-nums text-win">{yes}%</span>
+              <span className="text-[10px] text-secondary/50">chance</span>
             </div>
-            <div className="text-lg font-extrabold text-win">
-              {market.yesPercent !== null ? `${market.yesPercent}%` : "—"}
+            <div className="flex flex-col items-center gap-0.5 pb-3 pt-2">
+              <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-loss/70">NO</span>
+              <span className="text-[32px] font-black leading-none tabular-nums text-loss">{no}%</span>
+              <span className="text-[10px] text-secondary/50">chance</span>
             </div>
-          </button>
-          <button
-            type="button"
-            onClick={() => onStake("NO")}
-            className="press rounded-xl border border-loss/30 bg-loss/10 px-3 py-2 text-center"
-          >
-            <div className="text-[10px] font-bold uppercase tracking-wide text-loss">
-              {t("markets.no")}
-            </div>
-            <div className="text-lg font-extrabold text-loss">
-              {market.noPercent !== null ? `${market.noPercent}%` : "—"}
-            </div>
-          </button>
-        </div>
+          </div>
+
+          {/* Probability bar */}
+          <div className="mx-4 h-1 overflow-hidden rounded-full" style={{ background: "var(--bg-inset)" }}>
+            <div className="h-full rounded-full bg-gradient-to-r from-win to-win/60" style={{ width: `${yes}%` }} />
+          </div>
+
+          {/* Action buttons */}
+          <div className="grid grid-cols-2 gap-2 p-3">
+            <button
+              type="button"
+              onClick={() => onStake("YES")}
+              className="press rounded-xl py-2.5 text-sm font-extrabold text-win transition-all"
+              style={{ background: "rgba(34,197,94,0.1)", boxShadow: "inset 0 0 0 1px rgba(34,197,94,0.2)" }}
+            >
+              Buy YES
+            </button>
+            <button
+              type="button"
+              onClick={() => onStake("NO")}
+              className="press rounded-xl py-2.5 text-sm font-extrabold text-loss transition-all"
+              style={{ background: "rgba(239,68,68,0.1)", boxShadow: "inset 0 0 0 1px rgba(239,68,68,0.2)" }}
+            >
+              Buy NO
+            </button>
+          </div>
+        </>
       ) : market.status === "resolved" ? (
-        <div className="mt-3 rounded-xl bg-inset px-3 py-2 text-xs font-semibold">
+        <div className="mx-4 mt-3 rounded-xl px-3 py-2.5 text-xs font-semibold" style={{ background: "var(--bg-inset)" }}>
           {t("markets.resolved")}:{" "}
-          <span className={market.outcome === "YES" ? "text-win" : "text-loss"}>
-            {market.outcome}
-          </span>
+          <span className={market.outcome === "YES" ? "text-win" : "text-loss"}>{market.outcome}</span>
         </div>
       ) : market.status === "void" ? (
-        <div className="mt-3 rounded-xl bg-inset px-3 py-2 text-xs font-semibold text-secondary">
+        <div className="mx-4 mt-3 rounded-xl px-3 py-2.5 text-xs font-semibold text-secondary" style={{ background: "var(--bg-inset)" }}>
           {t("markets.voided")}
         </div>
       ) : (
-        <div className="mt-3 flex items-center justify-between rounded-xl bg-inset px-3 py-2">
+        <div className="mx-4 mt-3 flex items-center justify-between rounded-xl px-3 py-2.5" style={{ background: "var(--bg-inset)" }}>
           <span className="text-xs font-semibold text-secondary">{t("markets.awaitingResult")}</span>
           {isCreator && (
-            <button
-              type="button"
-              onClick={onResolve}
-              className="rounded-lg bg-gold-400 px-3 py-1.5 text-xs font-bold text-navy-900"
-            >
+            <button type="button" onClick={onResolve} className="rounded-lg bg-gold-400 px-3 py-1.5 text-xs font-bold text-navy-900">
               {t("markets.resolve")}
             </button>
           )}
         </div>
       )}
+
       {closedUnresolved && !isCreator && (
-        <p className="mt-1.5 text-[10px] text-secondary">{t("markets.awaitingResult")}…</p>
+        <p className="mt-1.5 px-4 text-[10px] text-secondary/50">{t("markets.awaitingResult")}…</p>
       )}
+
+      {/* Footer: pool */}
+      <div className="flex items-center justify-between border-t px-4 py-2.5 mt-1" style={{ borderColor: "var(--border-ring)" }}>
+        <span className="text-[11px] font-semibold text-secondary/60">
+          {volLabel(market.totalPoolTzs)} Vol.
+        </span>
+      </div>
     </div>
   );
 }

@@ -169,10 +169,17 @@ export function normalizeMarket(raw: unknown): GuapMarket | null {
   const title = str(o, ["title", "question", "name"]);
   if (!id || !title) return null;
 
-  // Prices come nested under `prices` or flat on the object.
+  // GUAP prices shape: { yes: { price: 0.60, probability: 60 }, no: { ... } }
+  // Fall back to flat numbers for forward compatibility.
   const prices = (typeof o.prices === "object" && o.prices !== null ? o.prices : o) as Raw;
-  const yes = num(prices, ["yes", "yesPrice", "yes_price", "yesProbability", "probabilityYes"]);
-  const no = num(prices, ["no", "noPrice", "no_price", "noProbability", "probabilityNo"]);
+  const yesPriceObj = typeof prices.yes === "object" && prices.yes !== null ? (prices.yes as Raw) : null;
+  const noPriceObj  = typeof prices.no  === "object" && prices.no  !== null ? (prices.no  as Raw) : null;
+  const yes = yesPriceObj
+    ? num(yesPriceObj, ["probability", "price"])
+    : num(prices, ["yes", "yesPrice", "yes_price", "yesProbability", "probabilityYes"]);
+  const no = noPriceObj
+    ? num(noPriceObj, ["probability", "price"])
+    : num(prices, ["no", "noPrice", "no_price", "noProbability", "probabilityNo"]);
   const yesPercent = toPercent(yes);
   const noPercent = toPercent(no) ?? (yesPercent !== null ? 100 - yesPercent : null);
 
@@ -207,6 +214,14 @@ function extractMarketArray(data: unknown): unknown[] {
   if (Array.isArray(data)) return data;
   if (typeof data === "object" && data !== null) {
     const o = data as Raw;
+    // GUAP wraps responses as { ok, data: { markets: [...] } }
+    if (typeof o.data === "object" && o.data !== null && !Array.isArray(o.data)) {
+      const inner = o.data as Raw;
+      for (const key of ["markets", "results", "items"]) {
+        if (Array.isArray(inner[key])) return inner[key] as unknown[];
+      }
+    }
+    // Also handle flat arrays at the top level
     for (const key of ["markets", "data", "results", "items"]) {
       if (Array.isArray(o[key])) return o[key] as unknown[];
     }

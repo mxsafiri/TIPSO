@@ -67,13 +67,13 @@ export default function TipCard({ tip, index = 0 }: { tip: TipDto; index?: numbe
           {/* Confidence fill bar */}
           {!tip.locked && (
             <div
-              className="fill-animate absolute inset-y-0 left-0 rounded-[14px] bg-gradient-to-r from-gold-500/[0.11] to-transparent"
+              className="fill-animate absolute inset-y-0 left-0 rounded-l-[14px] bg-gradient-to-r from-gold-500/[0.11] to-transparent"
               style={{ width: `${tip.confidence}%` }}
             />
           )}
           {/* Strip border */}
           <div
-            className="absolute inset-0 rounded-[14px]"
+            className="pointer-events-none absolute inset-0 rounded-[14px]"
             style={{ boxShadow: 'inset 0 0 0 1px var(--border-subtle)' }}
           />
 

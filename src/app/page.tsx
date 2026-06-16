@@ -127,13 +127,13 @@ export default function HomePage() {
               </div>
 
               {/* Intelligence strip */}
-              <div className="relative mx-4 mb-4 overflow-hidden rounded-[18px]">
+              <div className="relative mx-4 mb-4 overflow-hidden rounded-2xl">
                 <div
-                  className="fill-animate absolute inset-y-0 left-0 bg-gradient-to-r from-gold-500/[0.14] via-gold-500/[0.07] to-transparent"
+                  className="fill-animate absolute inset-y-0 left-0 rounded-l-2xl bg-gradient-to-r from-gold-500/[0.14] via-gold-500/[0.07] to-transparent"
                   style={{ width: `${featured.confidence}%` }}
                 />
                 <div
-                  className="absolute inset-0 rounded-[18px]"
+                  className="pointer-events-none absolute inset-0 rounded-2xl"
                   style={{ boxShadow: 'inset 0 0 0 1px var(--border-subtle)' }}
                 />
                 <div

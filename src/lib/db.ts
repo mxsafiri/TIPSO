@@ -135,6 +135,44 @@ export async function reconcilePendingTransactions(userId: string): Promise<void
   }
 }
 
+/**
+ * Reconcile ONE pending payment by its reference, polling the nTZS deposit
+ * status directly. Unlike reconcilePendingTransactions this is NOT throttled —
+ * it backs the foreground "confirming your payment" poll, so it must re-check
+ * on every call until the deposit settles or fails. Returns the live status so
+ * the client can stop polling. Never throws.
+ */
+export async function reconcileTransactionByReference(
+  userId: string,
+  reference: string,
+): Promise<"pending" | "completed" | "failed"> {
+  const tx = await store.findTransactionByReference(reference);
+  if (!tx || tx.userId !== userId) return "pending";
+  if (tx.status === "completed") return "completed";
+  if (tx.status === "failed") return "failed";
+  if (!tx.providerRef) return "pending";
+
+  try {
+    const { ntzsDepositStatus, isSettledStatus, isFailedStatus, isNtzsConfigured } = await import(
+      "./payments"
+    );
+    if (!isNtzsConfigured()) return "pending";
+    const status = await ntzsDepositStatus(tx.providerRef);
+    if (!status) return "pending";
+    if (isSettledStatus(status)) {
+      await settleTransactionRecord(tx);
+      return "completed";
+    }
+    if (isFailedStatus(status)) {
+      await store.setTransactionStatus(tx.id, "failed");
+      return "failed";
+    }
+  } catch {
+    // Treat any error as "still pending" — never fail the foreground poll.
+  }
+  return "pending";
+}
+
 export async function settleTransactionRecord(tx: Transaction): Promise<Transaction> {
   if (tx.status === "completed") return tx;
 

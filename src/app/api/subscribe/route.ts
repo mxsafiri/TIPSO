@@ -74,6 +74,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       subscription,
       transaction,
+      reference,
       pending: !paid,
       user: user ? await toPublicUser(user) : null,
     });

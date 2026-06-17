@@ -335,7 +335,7 @@ function GuapMarketCard({
       {/* ── Probability hero ── */}
       {isOpen ? (
         <>
-          <div className="mt-4 grid grid-cols-2 divide-x" style={{ borderColor: "var(--border)" }}>
+          <div className="mt-4 grid grid-cols-2">
             {/* YES side */}
             <div className="flex flex-col items-center gap-0.5 pb-3 pt-2">
               <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-win/70">
@@ -358,11 +358,11 @@ function GuapMarketCard({
             </div>
           </div>
 
-          {/* Probability bar */}
-          <div className="mx-4 h-1 overflow-hidden rounded-full" style={{ background: "var(--bg-inset)" }}>
+          {/* Probability bar — hairline */}
+          <div className="mx-4 h-[2px] overflow-hidden rounded-full" style={{ background: "var(--border-ring)" }}>
             <div
-              className="h-full rounded-full bg-gradient-to-r from-win to-win/60"
-              style={{ width: `${yes}%` }}
+              className="h-full rounded-full"
+              style={{ width: `${yes}%`, background: "rgba(34,197,94,0.35)" }}
             />
           </div>
 
@@ -472,7 +472,7 @@ function NativeMarketCard({
       {open ? (
         <>
           {/* Probability hero */}
-          <div className="mt-4 grid grid-cols-2 divide-x" style={{ borderColor: "var(--border)" }}>
+          <div className="mt-4 grid grid-cols-2">
             <div className="flex flex-col items-center gap-0.5 pb-3 pt-2">
               <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-win/70">YES</span>
               <span className="text-[32px] font-black leading-none tabular-nums text-win">{yes}%</span>
@@ -485,9 +485,9 @@ function NativeMarketCard({
             </div>
           </div>
 
-          {/* Probability bar */}
-          <div className="mx-4 h-1 overflow-hidden rounded-full" style={{ background: "var(--bg-inset)" }}>
-            <div className="h-full rounded-full bg-gradient-to-r from-win to-win/60" style={{ width: `${yes}%` }} />
+          {/* Probability bar — hairline */}
+          <div className="mx-4 h-[2px] overflow-hidden rounded-full" style={{ background: "var(--border-ring)" }}>
+            <div className="h-full rounded-full" style={{ width: `${yes}%`, background: "rgba(34,197,94,0.35)" }} />
           </div>
 
           {/* Action buttons */}

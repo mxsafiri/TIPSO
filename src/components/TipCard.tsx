@@ -19,62 +19,119 @@ export default function TipCard({ tip, index = 0 }: { tip: TipDto; index?: numbe
 
   return (
     <div
-      className="anim-fade-up press rounded-2xl border border-app bg-card p-4"
-      style={{ animationDelay: `${Math.min(index, 8) * 70}ms` }}
+      className="anim-fade-up relative overflow-hidden rounded-[20px]"
+      style={{
+        animationDelay: `${Math.min(index, 8) * 70}ms`,
+        background: 'var(--bg-card)',
+        boxShadow: `0 0 0 1px var(--border-ring), 0 2px 16px rgba(0,0,0,0.12), inset 3px 0 0 0 ${tip.homeColor}bb`,
+      }}
     >
-      <div className="flex items-center justify-between text-xs">
-        <span className="font-semibold uppercase tracking-wide text-gold">{tip.league}</span>
-        <span className="text-secondary">{matchTimeLabel(tip.kickoff, lang)}</span>
-      </div>
+      {/* Faint home-team color wash on the left */}
+      <div
+        className="pointer-events-none absolute inset-y-0 left-0 w-24"
+        style={{ background: `linear-gradient(to right, ${tip.homeColor}0d, transparent)` }}
+      />
 
-      <div className="mt-4 flex items-center justify-between gap-2">
-        <div className="flex flex-1 flex-col items-center gap-2">
-          <TeamBadge code={tip.homeCode} color={tip.homeColor} />
-          <span className="text-center text-sm font-semibold leading-tight">{tip.home}</span>
+      <div className="relative pl-4">
+        {/* League + time */}
+        <div className="flex items-center justify-between pr-4 pt-3.5">
+          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold">
+            {tip.league}
+          </span>
+          <span className="text-[11px] text-secondary">
+            {matchTimeLabel(tip.kickoff, lang)}
+          </span>
         </div>
-        <span className="text-xs font-bold text-secondary">VS</span>
-        <div className="flex flex-1 flex-col items-center gap-2">
-          <TeamBadge code={tip.awayCode} color={tip.awayColor} />
-          <span className="text-center text-sm font-semibold leading-tight">{tip.away}</span>
-        </div>
-      </div>
 
-      <div className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-inset px-3 py-2.5">
-        {tip.locked ? (
-          <>
-            <div className="flex items-center gap-2 text-secondary">
-              <LockIcon className="h-4 w-4 text-gold" />
-              <div>
-                <div className="text-[10px] uppercase tracking-wide">{t("tips.premiumLocked")}</div>
-                <div className="select-none text-sm font-bold blur-sm">Hidden Pick</div>
-              </div>
-            </div>
-            <Link
-              href="/plans"
-              className="rounded-lg bg-gold-400 px-3.5 py-2 text-xs font-bold text-navy-900 transition-opacity hover:opacity-90"
+        {/* Teams */}
+        <div className="flex items-center gap-2 py-3.5 pr-4">
+          <div className="flex flex-1 flex-col items-center gap-1.5">
+            <TeamBadge code={tip.homeCode} color={tip.homeColor} />
+            <span className="text-center text-xs font-semibold leading-tight text-primary">
+              {tip.home}
+            </span>
+          </div>
+          <span className="text-[10px] font-extrabold uppercase tracking-widest text-secondary/35">
+            vs
+          </span>
+          <div className="flex flex-1 flex-col items-center gap-1.5">
+            <TeamBadge code={tip.awayCode} color={tip.awayColor} />
+            <span className="text-center text-xs font-semibold leading-tight text-primary">
+              {tip.away}
+            </span>
+          </div>
+        </div>
+
+        {/* Prediction / lock strip */}
+        <div className="relative mr-4 mb-3 overflow-hidden rounded-[14px]">
+          {/* Confidence fill bar */}
+          {!tip.locked && (
+            <div
+              className="fill-animate absolute inset-y-0 left-0 rounded-l-[14px] bg-gradient-to-r from-gold-500/[0.11] to-transparent"
+              style={{ width: `${tip.confidence}%` }}
+            />
+          )}
+          {/* Strip border */}
+          <div
+            className="pointer-events-none absolute inset-0 rounded-[14px]"
+            style={{ boxShadow: 'inset 0 0 0 1px var(--border-subtle)' }}
+          />
+
+          {tip.locked ? (
+            <div
+              className="relative flex items-center justify-between px-3.5 py-2.5"
+              style={{ background: 'var(--bg-inset)' }}
             >
-              {t("tips.unlock")}
-            </Link>
-          </>
-        ) : (
-          <>
-            <div className="min-w-0">
-              <div className="text-[10px] uppercase tracking-wide text-secondary">{t("home.tip")}</div>
-              <div className="truncate text-sm font-bold">{prediction}</div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <div className="text-[10px] uppercase tracking-wide text-secondary">{t("home.odds")}</div>
-                <div className="text-sm font-bold text-gold">{tip.odds.toFixed(2)}</div>
+              <div className="flex items-center gap-2">
+                <LockIcon className="h-3.5 w-3.5 shrink-0 text-gold" />
+                <div>
+                  <div className="text-[9px] uppercase tracking-[0.14em] text-secondary/55">
+                    {t("tips.premiumLocked")}
+                  </div>
+                  <div className="select-none text-sm font-bold text-primary blur-[5px]">
+                    Hidden Pick
+                  </div>
+                </div>
               </div>
-              <ConfidenceBadge value={tip.confidence} />
+              <Link
+                href="/plans"
+                className="rounded-[10px] bg-gold-400 px-3 py-1.5 text-xs font-bold text-navy-900 transition-opacity hover:opacity-90 active:scale-95"
+              >
+                {t("tips.unlock")}
+              </Link>
             </div>
-          </>
-        )}
+          ) : (
+            <div
+              className="relative flex items-center justify-between gap-3 px-3.5 py-2.5"
+              style={{ background: 'var(--strip-bg)' }}
+            >
+              <div className="min-w-0 flex-1">
+                <div className="text-[9px] uppercase tracking-[0.14em] text-secondary/55">
+                  {t("home.tip")}
+                </div>
+                <div className="mt-0.5 truncate text-sm font-bold text-primary">
+                  {prediction}
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-2.5">
+                <div className="text-right">
+                  <div className="text-[9px] uppercase tracking-[0.14em] text-secondary/55">
+                    {t("home.odds")}
+                  </div>
+                  <div className="mt-0.5 text-base font-extrabold text-gold tabular-nums">
+                    {tip.odds.toFixed(2)}
+                  </div>
+                </div>
+                <ConfidenceBadge value={tip.confidence} />
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
+      {/* AI Intelligence panel */}
       {hasIntelligence && (
-        <div className="mt-2.5">
+        <div className="relative px-4 pb-3 pl-8">
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}

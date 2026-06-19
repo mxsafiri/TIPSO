@@ -1,19 +1,47 @@
 "use client";
 
-import { useApp } from "./AppProviders";
+const CIRCUMFERENCE = 2 * Math.PI * 13; // r=13 → ~81.68
 
 export default function ConfidenceBadge({ value }: { value: number }) {
-  const { t } = useApp();
-  const tone =
-    value >= 75
-      ? "text-win bg-win/10 border-win/30"
-      : value >= 65
-        ? "text-gold border-gold-500/30 bg-gold-500/10"
-        : "text-secondary border-app bg-inset";
+  const arcColor =
+    value >= 75 ? "#22c55e"
+    : value >= 65 ? "#e0b23a"
+    : "#8e97ad";
+
+  const textColor =
+    value >= 75 ? "text-win"
+    : value >= 65 ? "text-gold"
+    : "text-secondary";
+
+  const fill = (value / 100) * CIRCUMFERENCE;
+
   return (
-    <div className={`anim-pop flex flex-col items-center rounded-lg border px-2.5 py-1 ${tone}`}>
-      <span className="text-sm font-bold leading-tight">{value}%</span>
-      <span className="text-[9px] uppercase tracking-wide opacity-80">{t("home.confidence")}</span>
+    <div className="relative flex h-10 w-10 shrink-0 items-center justify-center">
+      <svg
+        className="absolute inset-0 -rotate-90"
+        viewBox="0 0 36 36"
+        fill="none"
+        aria-hidden="true"
+      >
+        {/* Track */}
+        <circle
+          cx="18" cy="18" r="13"
+          stroke="rgba(255,255,255,0.08)"
+          strokeWidth="2.5"
+        />
+        {/* Arc fill */}
+        <circle
+          cx="18" cy="18" r="13"
+          stroke={arcColor}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeDasharray={`${fill} ${CIRCUMFERENCE}`}
+          className="arc-draw"
+        />
+      </svg>
+      <span className={`relative text-[12px] font-extrabold tabular-nums leading-none ${textColor}`}>
+        {value}%
+      </span>
     </div>
   );
 }

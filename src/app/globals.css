@@ -3,7 +3,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  /* TIPSO brand */
+  /* Betua brand */
   --color-gold-300: #ecc55c;
   --color-gold-400: #e0b23a;
   --color-gold-500: #d4a017;
@@ -31,6 +31,13 @@
   --text-secondary: #5b6478;
   --border: #e3e6ee;
   --gold: #b8890f;
+  --gold-glow: rgba(184, 137, 15, 0.18);
+
+  /* Theme-aware translucent tokens */
+  --nav-bg: rgba(246, 247, 251, 0.93);
+  --strip-bg: rgba(238, 240, 246, 0.82);
+  --border-subtle: rgba(0, 0, 0, 0.07);
+  --border-ring: rgba(0, 0, 0, 0.05);
 }
 
 .dark {
@@ -42,17 +49,30 @@
   --text-secondary: #8e97ad;
   --border: #1f2942;
   --gold: #e0b23a;
+  --gold-glow: rgba(224, 178, 58, 0.18);
+
+  /* Theme-aware translucent tokens */
+  --nav-bg: rgba(10, 14, 26, 0.88);
+  --strip-bg: rgba(7, 11, 20, 0.55);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-ring: rgba(255, 255, 255, 0.05);
 }
 
 @layer utilities {
-  .bg-app { background-color: var(--bg); }
-  .bg-card { background-color: var(--bg-card); }
-  .bg-elevated { background-color: var(--bg-elevated); }
-  .bg-inset { background-color: var(--bg-inset); }
-  .text-primary { color: var(--text-primary); }
+  .bg-app     { background-color: var(--bg); }
+  .bg-card    { background-color: var(--bg-card); }
+  .bg-elevated{ background-color: var(--bg-elevated); }
+  .bg-inset   { background-color: var(--bg-inset); }
+  .text-primary   { color: var(--text-primary); }
   .text-secondary { color: var(--text-secondary); }
-  .text-gold { color: var(--gold); }
-  .border-app { border-color: var(--border); }
+  .text-gold      { color: var(--gold); }
+  .border-app     { border-color: var(--border); }
+
+  /* Dot-grid texture for atmospheric cards */
+  .bg-dot-grid {
+    background-image: radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
 }
 
 html {
@@ -65,36 +85,32 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Hide scrollbars on horizontal chip rows while keeping them scrollable */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
+/* ── Scrollbar suppression ─────────────────────────────────────── */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+/* ── Live dot ──────────────────────────────────────────────────── */
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
+  50%       { opacity: 0.35; }
 }
 .live-dot {
   animation: pulse-dot 1.4s ease-in-out infinite;
 }
 
-/* --- Subtle motion (disabled for prefers-reduced-motion) ------------------ */
+/* ── UI motion (skipped when reduced-motion is preferred) ───────── */
 @media (prefers-reduced-motion: no-preference) {
   @keyframes fade-up {
     from { opacity: 0; transform: translateY(14px); }
-    to { opacity: 1; transform: translateY(0); }
+    to   { opacity: 1; transform: translateY(0); }
   }
   .anim-fade-up {
     animation: fade-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
   @keyframes pop-in {
-    0% { opacity: 0; transform: scale(0.85); }
-    70% { transform: scale(1.04); }
+    0%   { opacity: 0; transform: scale(0.85); }
+    70%  { transform: scale(1.04); }
     100% { opacity: 1; transform: scale(1); }
   }
   .anim-pop {
@@ -102,9 +118,18 @@ body {
     animation-delay: 0.25s;
   }
 
-  @keyframes shimmer {
-    0% { transform: translateX(-150%) skewX(-18deg); }
-    100% { transform: translateX(350%) skewX(-18deg); }
+  /* Button press micro-interaction */
+  .press {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .press:active {
+    transform: scale(0.98);
+  }
+
+  /* Shimmer sweep on CTA buttons / locked states */
+  @keyframes shimmer-sweep {
+    0%   { transform: translateX(-150%) skewX(-18deg); }
+    100% { transform: translateX(350%)  skewX(-18deg); }
   }
   .anim-shimmer {
     position: relative;
@@ -115,24 +140,42 @@ body {
     position: absolute;
     inset: 0 auto 0 0;
     width: 35%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent);
-    animation: shimmer 3.2s ease-in-out infinite;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.28), transparent);
+    animation: shimmer-sweep 3.2s ease-in-out infinite;
     animation-delay: 1.2s;
-  }
-
-  .press {
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-  }
-  .press:active {
-    transform: scale(0.98);
   }
 
   @keyframes trophy-bounce {
     0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-3px); }
+    50%       { transform: translateY(-3px); }
   }
   .anim-trophy {
     display: inline-block;
     animation: trophy-bounce 1.8s ease-in-out infinite;
   }
+}
+
+/* ── Confidence arc draw-in ────────────────────────────────────── */
+@keyframes arc-in {
+  from { stroke-dasharray: 0 81.68; }
+}
+.arc-draw {
+  animation: arc-in 0.9s cubic-bezier(0.34, 1.1, 0.64, 1) forwards;
+}
+
+/* ── Confidence fill slide-in ──────────────────────────────────── */
+@keyframes fill-slide {
+  from { width: 0; }
+}
+.fill-animate {
+  animation: fill-slide 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* ── Featured card ambient glow pulse ──────────────────────────── */
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.6; }
+  50%       { opacity: 1; }
+}
+.glow-pulse {
+  animation: glow-pulse 3.5s ease-in-out infinite;
 }

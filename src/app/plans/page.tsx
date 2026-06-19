@@ -17,7 +17,7 @@ const PROVIDERS: { id: PaymentProvider | "wallet"; label: string; color: string 
   { id: "halopesa", label: "HaloPesa", color: "#F47B20" },
 ];
 
-type Step = "choose" | "pay" | "processing" | "success" | "pendingSettlement";
+type Step = "choose" | "pay" | "processing" | "confirming" | "success" | "pendingSettlement";
 
 export default function PlansPage() {
   const { t, lang, user, userLoaded, refreshUser } = useApp();
@@ -35,8 +35,6 @@ export default function PlansPage() {
   async function pay() {
     setError("");
     setStep("processing");
-    // Brief delay so the flow mirrors real mobile-money STK-push UX.
-    await new Promise((resolve) => setTimeout(resolve, 2200));
     try {
       const res = await fetch("/api/subscribe", {
         method: "POST",
@@ -50,18 +48,42 @@ export default function PlansPage() {
         return;
       }
       if (data.pending) {
-        // Collection settles via webhook/reconciliation — poll for activation.
-        let activated = false;
-        for (let i = 0; i < 20; i++) {
+        // STK push sent — the prompt is now on the user's phone. Switch the
+        // screen to "confirming" and actively poll the deposit status (this
+        // settles the moment nTZS clears it, independent of the webhook).
+        setStep("confirming");
+        const reference: string | undefined = data.reference ?? data.transaction?.reference;
+
+        // Poll for up to ~3 minutes: real STK PIN entry can take a while.
+        let settled = false;
+        let failed = false;
+        for (let i = 0; i < 60; i++) {
           await new Promise((resolve) => setTimeout(resolve, 3000));
-          const me = await fetch("/api/auth/me", { cache: "no-store" }).then((r) => r.json());
-          if (me.user?.subscription) {
-            activated = true;
-            break;
+          try {
+            const url = reference
+              ? `/api/payments/status?reference=${encodeURIComponent(reference)}`
+              : "/api/auth/me";
+            const poll = await fetch(url, { cache: "no-store" }).then((r) => r.json());
+            if (poll.status === "completed" || poll.subscription || poll.user?.subscription) {
+              settled = true;
+              break;
+            }
+            if (poll.status === "failed") {
+              failed = true;
+              break;
+            }
+          } catch {
+            // Network blip — keep polling.
           }
         }
+
         await refreshUser();
-        setStep(activated ? "success" : "pendingSettlement");
+        if (failed) {
+          setError("Payment was not completed. No money was taken — please try again.");
+          setStep("pay");
+          return;
+        }
+        setStep(settled ? "success" : "pendingSettlement");
         return;
       }
       await refreshUser();
@@ -237,6 +259,15 @@ export default function PlansPage() {
             <span className="h-12 w-12 animate-spin rounded-full border-4 border-gold-400 border-t-transparent" />
             <h2 className="mt-6 text-lg font-bold">{t("plans.processing")}</h2>
             {provider !== "wallet" && <p className="mt-2 text-sm text-secondary">{t("plans.checkPhone")}</p>}
+          </div>
+        )}
+
+        {step === "confirming" && (
+          <div className="flex flex-col items-center px-4 py-20 text-center">
+            <span className="h-12 w-12 animate-spin rounded-full border-4 border-gold-400 border-t-transparent" />
+            <h2 className="mt-6 text-lg font-bold">{t("plans.confirmingTitle")}</h2>
+            <p className="mt-2 text-sm text-secondary">{t("plans.confirmingDesc")}</p>
+            <p className="mt-4 text-xs text-secondary/70">{t("plans.confirmingHint")}</p>
           </div>
         )}
 

@@ -16,7 +16,7 @@ export async function GET() {
   }
 
   const probes = await probeMarkets();
-  const markets = await listMarkets(true);
+  const markets = await listMarkets({ force: true });
 
   return NextResponse.json({
     configured: true,

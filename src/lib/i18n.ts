@@ -151,6 +151,15 @@ const dict = {
     en: "Check your phone and enter your PIN to approve the payment.",
     sw: "Angalia simu yako na uweke PIN kuthibitisha malipo.",
   },
+  "plans.confirmingTitle": { en: "Confirming your payment…", sw: "Tunathibitisha malipo yako…" },
+  "plans.confirmingDesc": {
+    en: "We've received your approval. Activating your plan now — this usually takes a few seconds.",
+    sw: "Tumepokea uthibitisho wako. Tunawasha kifurushi chako sasa — kawaida huchukua sekunde chache.",
+  },
+  "plans.confirmingHint": {
+    en: "Keep this screen open. You don't need to pay again.",
+    sw: "Acha skrini hii wazi. Huitaji kulipa tena.",
+  },
   "plans.success": { en: "Payment successful!", sw: "Malipo yamekamilika!" },
   "plans.pendingTitle": { en: "Payment received — confirming", sw: "Malipo yamepokelewa — yanathibitishwa" },
   "plans.pendingDesc": {
